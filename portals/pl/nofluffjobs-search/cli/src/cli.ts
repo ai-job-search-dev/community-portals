@@ -15,6 +15,11 @@ interface Flags {
   [k: string]: string | boolean | string[]
 }
 
+// Flags that never take a value. parseFlags must not let them consume the next
+// token, or `search --dates php` would swallow "php" as the flag's value and
+// silently turn the date lookup off.
+const BOOLEAN_FLAGS = new Set(["all", "dates", "help", "h"])
+
 function parseFlags(argv: string[]): Flags {
   const flags: Flags = { _: [] }
   const alias: Record<string, string> = { q: "query", l: "location", n: "limit", c: "category" }
@@ -23,7 +28,7 @@ function parseFlags(argv: string[]): Flags {
     if (a.startsWith("--") || a.startsWith("-")) {
       const key = alias[a.replace(/^-+/, "")] ?? a.replace(/^-+/, "")
       const next = argv[i + 1]
-      if (next === undefined || next.startsWith("-")) {
+      if (BOOLEAN_FLAGS.has(key) || next === undefined || next.startsWith("-")) {
         flags[key] = true
       } else {
         flags[key] = next
@@ -111,14 +116,42 @@ async function main(): Promise<number> {
     }
   }
 
+  // A value-taking flag with no value parses as `true`; the option builders
+  // below would then drop it and run an unfiltered search with exit 0.
+  const badArg = (error: string): number => {
+    process.stderr.write(JSON.stringify({ error, code: "BAD_ARG" }) + "\n")
+    return 1
+  }
+  if (knownFlags) {
+    for (const key of Object.keys(flags)) {
+      if (key === "_" || BOOLEAN_FLAGS.has(key)) continue
+      if (flags[key] === true) return badArg(`--${key} requires a value`)
+    }
+  }
+
+  // Extra positionals are never silently ignored: `search PHP Symfony` would
+  // otherwise search with no keywords at all.
+  const positionals = flags._ as string[]
+  if (cmd === "search" && positionals.length > 1) {
+    return badArg(`unexpected argument "${positionals[1]}" - search takes only flags; pass keywords with -q "<text>"`)
+  }
+  if (cmd === "detail" && positionals.length > 2) {
+    return badArg(`unexpected argument "${positionals[2]}" - detail takes a single <slug|url>`)
+  }
+
   if (cmd === "search") {
     const fmt = (flags.format as string) || "json"
+    if (!["json", "table", "plain"].includes(fmt)) {
+      return badArg(`--format must be one of json | table | plain, got "${fmt}"`)
+    }
 
+    // Whole-string integer check: parseInt would accept "10oops" as 10 and
+    // truncate "1.5" to 1.
     const parseIntFlag = (name: string, raw: string | boolean | string[]): number | null => {
-      const val = parseInt(raw as string, 10)
-      if (isNaN(val)) {
+      const val = /^\d+$/.test(String(raw)) ? Number(raw) : NaN
+      if (!Number.isSafeInteger(val)) {
         process.stderr.write(
-          JSON.stringify({ error: `--${name} must be a number, got "${raw}"`, code: "BAD_ARG" }) + "\n",
+          JSON.stringify({ error: `--${name} must be a whole number, got "${raw}"`, code: "BAD_ARG" }) + "\n",
         )
         return null
       }
@@ -180,7 +213,7 @@ async function main(): Promise<number> {
       jobage,
       dates: wantsDates,
       limit,
-      format: (["json", "table", "plain"].includes(fmt) ? fmt : "json") as SearchOpts["format"],
+      format: fmt as SearchOpts["format"],
     }
     return runSearch(opts)
   }
@@ -192,7 +225,10 @@ async function main(): Promise<number> {
       return 1
     }
     const fmt = (flags.format as string) || "json"
-    const opts: DetailOpts = { id, format: (fmt === "plain" ? "plain" : "json") as DetailOpts["format"] }
+    if (!["json", "plain"].includes(fmt)) {
+      return badArg(`--format must be one of json | plain, got "${fmt}"`)
+    }
+    const opts: DetailOpts = { id, format: fmt as DetailOpts["format"] }
     return runDetail(opts)
   }
 

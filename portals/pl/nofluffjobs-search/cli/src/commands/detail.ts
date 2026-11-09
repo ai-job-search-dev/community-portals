@@ -5,6 +5,7 @@ import {
   writeError,
   parseJobDetail,
   slugFromIdOrUrl,
+  isSafeSegment,
   formatSalary,
 } from "../helpers.js"
 
@@ -15,6 +16,11 @@ export interface DetailOpts {
 
 export async function runDetail(opts: DetailOpts): Promise<number> {
   const slug = slugFromIdOrUrl(opts.id)
+  // The slug is appended to a URL path; "../api" would escape /job/.
+  if (!isSafeSegment(slug)) {
+    writeError(`"${opts.id}" is not a valid offer slug or nofluffjobs.com offer URL`, "BAD_ARG")
+    return 1
+  }
   let html: string
   try {
     html = await htmlFetch(`${BASE}${DETAIL_PATH}/${slug}`)

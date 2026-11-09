@@ -103,16 +103,13 @@ describe("search output", () => {
     expect(out()).toContain("https://nofluffjobs.com/job/a-1")
   })
 
-  test("a 404 list page yields no offers in every format", async () => {
+  test("a 404 list page exits 1 with NOT_FOUND, not an empty success", async () => {
     mockSite(() => [404, ""])
-    for (const format of ["table", "plain"] as const) {
-      const out = capture("stdout")
-      expect(await runSearch({ ...base, format })).toBe(0)
-      expect(out().trim()).toBe("No offers found.")
-    }
     const out = capture("stdout")
-    expect(await runSearch(base)).toBe(0)
-    expect(JSON.parse(out()).results).toEqual([])
+    const err = capture("stderr")
+    expect(await runSearch(base)).toBe(1)
+    expect(out()).toBe("")
+    expect(JSON.parse(err()).code).toBe("NOT_FOUND")
   })
 
   test("--limit caps the emitted results", async () => {
@@ -291,5 +288,17 @@ describe("detail output", () => {
     const err = capture("stderr")
     expect(await runDetail({ id: slug, format: "json" })).toBe(1)
     expect(JSON.parse(err()).code).toBe("FETCH_FAILED")
+  })
+})
+
+describe("detail slug safety", () => {
+  test("a path-escaping slug is refused before any request is made", async () => {
+    const urls = mockSite(() => "<html></html>")
+    const err = capture("stderr")
+    for (const id of ["../api", "..%2Fapi", "a/../../api", "https://nofluffjobs.com/job/.."]) {
+      expect(await runDetail({ id, format: "json" })).toBe(1)
+    }
+    expect(urls).toEqual([])
+    expect(err()).toContain("BAD_ARG")
   })
 })

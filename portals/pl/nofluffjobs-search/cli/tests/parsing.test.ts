@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   stripHtml,
   decodeEntities,
+  isSafeSegment,
   innerText,
   textAfterDataCy,
   allTextAfterDataCy,
@@ -313,5 +314,38 @@ describe("filters and urls", () => {
   test("formatSalary renders a band or a dash", () => {
     expect(formatSalary({ type: "b2b", from: 80, to: 130, currency: "PLN", unit: "hour" })).toBe("80-130 PLN/hour")
     expect(formatSalary(null)).toBe("-")
+  })
+})
+
+describe("decodeEntities hardening", () => {
+  test("is single-pass: &amp;lt; yields the text &lt;, not <", () => {
+    expect(decodeEntities("&amp;lt;")).toBe("&lt;")
+    expect(decodeEntities("&amp;amp;")).toBe("&amp;")
+  })
+
+  test("still decodes the common entities and the dash entities", () => {
+    expect(decodeEntities("a&nbsp;b &amp; &lt;c&gt; &quot;d&quot; &ndash; &mdash; &#x41; &#65;")).toBe(
+      'a b & <c> "d" \u2013 \u2014 A A',
+    )
+  })
+
+  test("an invalid numeric entity is left as written, never thrown", () => {
+    for (const bad of ["&#1114112;", "&#x110000;", "&#99999999999;", "&#0;", "&#xD800;"]) {
+      expect(decodeEntities(`x ${bad} y`)).toBe(`x ${bad} y`)
+    }
+  })
+})
+
+describe("isSafeSegment", () => {
+  test("accepts offer slugs", () => {
+    for (const s of ["php", "mid-senior-symfony-developer-polcode-remote", "data_science"]) {
+      expect(isSafeSegment(s)).toBe(true)
+    }
+  })
+
+  test("rejects anything that could leave the path segment", () => {
+    for (const s of ["", "..", "../api", "a/b", "a?b", "a#b", "%2e%2e", "-x", ".hidden", "a b"]) {
+      expect(isSafeSegment(s)).toBe(false)
+    }
   })
 })

@@ -88,8 +88,14 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     return 1
   }
 
+  // htmlFetch maps a 404 to "": that is not a successful search with no results.
+  if (!html) {
+    writeError(`nofluffjobs.com has no listing page for this search (HTTP 404): ${buildSearchUrl(opts)}`, "NOT_FOUND")
+    return 1
+  }
+
   let results = parseCards(mainListing(html))
-  if (html && results.length === 0 && !/nfj-postings-item/.test(html)) {
+  if (results.length === 0 && !/nfj-postings-item/.test(html)) {
     writeError(
       "nofluffjobs.com returned a page with no posting cards - the site's markup has probably changed; see url-reference.md for the parsing anchors",
       "PARSE_FAILED",

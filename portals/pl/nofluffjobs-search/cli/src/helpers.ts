@@ -82,20 +82,36 @@ export interface JobDetail extends JobCard {
   country: string | null
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: " ",
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  ndash: "\u2013",
+  mdash: "\u2014",
+  minus: "-",
+}
+
+/**
+ * Decode HTML entities in a single pass, so `&amp;lt;` becomes the literal text
+ * `&lt;` rather than being decoded a second time into `<`. A numeric entity
+ * naming an invalid code point (out of range, NUL, a lone surrogate) is left as
+ * written instead of throwing.
+ */
 export function decodeEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&ndash;/g, "\u2013")
-    .replace(/&mdash;/g, "\u2014")
-    .replace(/&minus;/g, "-")
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, c: string) => String.fromCodePoint(parseInt(c, 16)))
-    .replace(/&#(\d+);/g, (_, c: string) => String.fromCodePoint(parseInt(c, 10)))
-    .replace(/\u00a0/g, " ")
+  return text.replace(
+    /&(?:(nbsp|amp|lt|gt|quot|apos|ndash|mdash|minus)|#(\d+)|#[xX]([0-9a-fA-F]+));/g,
+    (match, name, dec, hex) => {
+      if (name) return NAMED_ENTITIES[name]!
+      const code = dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16)
+      if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) {
+        return match
+      }
+      return String.fromCodePoint(code)
+    },
+  ).replace(/\u00a0/g, " ")
 }
 
 export function stripHtml(html: string): string {
@@ -535,6 +551,11 @@ export function citySlug(location: string | undefined): string | undefined {
     .replace(/\u0142/g, "l")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+}
+
+/** One URL path segment made only of characters an offer slug uses. */
+export function isSafeSegment(s: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(s)
 }
 
 export function slugFromIdOrUrl(input: string): string {
