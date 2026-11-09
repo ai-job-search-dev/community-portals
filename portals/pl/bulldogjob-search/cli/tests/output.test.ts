@@ -123,6 +123,7 @@ describe("search output", () => {
     expect(await runSearch({ ...base, format: "plain" })).toBe(0)
     expect(out()).toContain("Role 1")
     expect(out()).toContain("id: 1001-role-1")
+    expect(out()).toContain("https://bulldogjob.pl/companies/jobs/1001-role-1")
   })
 
   test("--limit caps the emitted results", async () => {
@@ -179,6 +180,31 @@ describe("search output", () => {
     expect(urls).toHaveLength(MAX_PAGES)
     expect(JSON.parse(out()).meta.truncated).toBe(true)
     expect(JSON.parse(err().trim().split("\n")[0]).code).toBe("PAGE_CAP_REACHED")
+  })
+
+  test("--all keeps sweeping past a page with one malformed entry", async () => {
+    const urls = mockSite((u) => {
+      const p = Number(u.pathname.match(/page,(\d+)/)?.[1] ?? 1)
+      if (p === 1) return page({ totalCount: 60, jobs: [...Array.from({ length: 49 }, (_, i) => job(i + 1)), null] })
+      return listPage([job(99)], 60)
+    })
+    const out = capture("stdout")
+    await runSearch({ ...base, all: true })
+    expect(urls).toHaveLength(2)
+    expect(JSON.parse(out()).meta.count).toBe(50)
+  })
+
+  test("a sweep of exactly the cap with nothing after it does not warn", async () => {
+    const total = MAX_PAGES * 50
+    mockSite((u) => {
+      const p = Number(u.pathname.match(/page,(\d+)/)?.[1] ?? 1)
+      return listPage(Array.from({ length: 50 }, (_, i) => job(p * 100 + i)), total)
+    })
+    const out = capture("stdout")
+    const err = capture("stderr")
+    await runSearch({ ...base, all: true })
+    expect(JSON.parse(out()).meta.truncated).toBe(false)
+    expect(err()).not.toContain("PAGE_CAP_REACHED")
   })
 
   test("--jobage reads dates from detail pages and drops older offers", async () => {
@@ -242,6 +268,18 @@ describe("detail output", () => {
     expect(out()).toContain("Status: ACTIVE")
     expect(out()).toContain("Salary: 20 000 PLN (B2B)")
     expect(out()).toContain("URL: https://bulldogjob.pl/companies/jobs/260906")
+  })
+
+  test("plain output separates header, facts and description with blank lines", async () => {
+    mockSite(() => detailPage("260906", "2026-11-02T10:00:00+01:00"))
+    const out = capture("stdout")
+    await runDetail({ id: "260906", format: "plain" })
+    const blocks = out().trimEnd().split("\n\n")
+    // header | facts | description (itself two paragraphs) | URL
+    expect(blocks[0]).toContain("PHP Developer")
+    expect(blocks[1]).toContain("Status: ACTIVE")
+    expect(blocks[2]).toContain("Build")
+    expect(blocks[blocks.length - 1]).toMatch(/^URL: /)
   })
 
   test("a full offer URL is fetched from its own path", async () => {

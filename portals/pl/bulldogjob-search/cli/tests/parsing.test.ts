@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+  visibleHtml,
   buildListUrl,
   htmlToText,
   normalizeCity,
@@ -190,5 +191,52 @@ describe("entity decoding", () => {
 
   test("an out-of-range numeric entity is dropped, never thrown", () => {
     expect(htmlToText("<p>a&#1114112;b</p>")).toBe("ab")
+  })
+})
+
+describe("visibleHtml hidden content", () => {
+  test("drops a hidden non-void element written with a trailing slash", () => {
+    expect(visibleHtml("a<div hidden/>SECRET</div>b")).toBe("ab")
+  })
+
+  test("a > inside a quoted attribute does not hide the hidden attribute", () => {
+    expect(visibleHtml('a<div title="x>y" hidden>SECRET</div>b')).toBe("ab")
+  })
+
+  test("a / separating the tag name from its attributes is understood", () => {
+    expect(visibleHtml("a<div/hidden>SECRET</div>b")).toBe("ab")
+  })
+
+  test("nested same-name elements inside a hidden one are skipped together", () => {
+    expect(visibleHtml("a<div hidden><div>x</div>SECRET</div>b")).toBe("ab")
+  })
+
+  test("visible elements are kept untouched", () => {
+    expect(visibleHtml('a<div class="x>y">kept</div>b')).toBe('a<div class="x>y">kept</div>b')
+  })
+
+  test("htmlToText no longer leaks a hidden element", () => {
+    expect(htmlToText("<p>shown</p><span hidden/>SECRET</span>")).toBe("shown")
+  })
+})
+
+describe("parseDetail picks the requested offer", () => {
+  const job = (id: string, position: string) => ({
+    id, position, state: "published", publishedAt: "2026-11-02T10:00:00+01:00", endsAt: "2999-01-01T00:00:00+01:00",
+  })
+
+  test("with several Job entries, the one matching the id wins even if not first", () => {
+    const apollo = { "Job:2002-related": job("2002-related", "Related"), "Job:1001-x": job("1001-x", "Wanted") }
+    expect(parseDetail(page({ __APOLLO_STATE__: apollo }), "1001-x").title).toBe("Wanted")
+  })
+
+  test("the key may be the bare leading number", () => {
+    const apollo = { "Job:2002": job("2002", "Related"), "Job:1001": job("1001", "Wanted") }
+    expect(parseDetail(page({ __APOLLO_STATE__: apollo }), "1001-some-slug").title).toBe("Wanted")
+  })
+
+  test("several Job entries and none for the id is a parse failure, not a guess", () => {
+    const apollo = { "Job:2002": job("2002", "A"), "Job:3003": job("3003", "B") }
+    expect(() => parseDetail(page({ __APOLLO_STATE__: apollo }), "1001-x")).toThrow(/markup changed/)
   })
 })

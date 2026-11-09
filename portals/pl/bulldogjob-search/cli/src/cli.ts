@@ -49,9 +49,10 @@ SEARCH FLAGS
   --skill <name>       Explicit skill filter; then every -q word is a title/tag word.
   --role <name>        Role filter, e.g. backend, frontend, fullstack, devops.
   --level <level>      ${LEVELS.join(" | ")}.
-  --city, -l <city>    ${CITIES.join(", ")}. "Remote" = fully remote offers.
+  --city, -l <city>    ${CITIES.join(", ")}. "Remote" = offers that allow remote work
+                       (see workModes in the output for full-remote vs hybrid).
   At least one of --query/--skill/--role/--level/--city is required.
-  --jobage <days>      Posted within N calendar days (yesterday counts under 1). Needs the
+  --jobage <days>      Posted within N calendar days (1 = today and yesterday). Needs the
                        publication date, so it reads each result's detail page (implies --dates).
   --dates              Fill date/postedAt for every result (one extra request per result).
   --page <n>           1-indexed page (50 offers/page). Default 1. Not combinable with title words.
@@ -87,7 +88,8 @@ async function main(): Promise<number> {
 
   if (!cmd || flags.help || flags.h) {
     process.stdout.write(HELP)
-    return cmd ? 0 : 1
+    // An explicit --help is a success; only a bare invocation is a usage error.
+    return flags.help || flags.h ? 0 : 1
   }
 
   // Unknown flags are rejected, never ignored: a discarded filter changes what the search returns.

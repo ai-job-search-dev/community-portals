@@ -104,10 +104,15 @@ async function fetchCards(opts: SearchOpts, skill: string | undefined, sweep: bo
       seen.add(c.id)
       cards.push(c)
     }
-    lastPageFull = parsed.cards.length >= PAGE_SIZE
+    // Judge "full page" from the entries the server sent, not those that parsed:
+    // one malformed entry on a full page must not make it look like the last.
+    lastPageFull = parsed.rawCount >= PAGE_SIZE
     if (fresh.length === 0 || !lastPageFull) break
   }
-  return { cards, total, pages, truncated: sweep && pages === MAX_PAGES && lastPageFull }
+  // Truncated only if the server reports offers beyond the pages read; a sweep
+  // of exactly MAX_PAGES full pages with nothing after is complete.
+  const readThrough = (opts.page - 1 + pages) * PAGE_SIZE
+  return { cards, total, pages, truncated: sweep && pages === MAX_PAGES && lastPageFull && total > readThrough }
 }
 
 /** Fill date/postedAt from each offer's detail page. Returns the ids whose lookup failed. */

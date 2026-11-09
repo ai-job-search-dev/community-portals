@@ -63,4 +63,11 @@ describe("flag validation (more)", () => {
     const s = await runCLI(["search", "-q", "php", "Symfony"])
     expect(JSON.parse(s.stderr).error).toContain("-q")
   })
+
+  test("an explicit --help with no command exits 0, a bare invocation exits 1", async () => {
+    const help = await runCLI(["--help"])
+    expect(help.exitCode).toBe(0)
+    expect(help.stdout).toContain("USAGE")
+    expect((await runCLI([])).exitCode).toBe(1)
+  })
 })

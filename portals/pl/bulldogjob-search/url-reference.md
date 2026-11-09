@@ -33,7 +33,7 @@ Data: `<script id="__NEXT_DATA__" type="application/json">` -> `props.pageProps`
 (HTML or null), `publishedAt`, `endsAt`, `state` (`published`), `workModes` (`on-site`/`hybrid`/`full-remote`),
 `workFrom[]` (countries), `locations[].location.{cityPl,cityEn}`, `b2bSalary/employmentSalary/otherSalary`
 (`money`, `currency`, `timeframe`), `technologyTags`, `minExperienceInYears`, `company.__ref` -> `Company:<id>` (`name`).
-Next.js escapes `<` as `<` inside the JSON, so `</script>` never appears within it.
+Next.js escapes `<` as `\u003c` inside the JSON, so `</script>` never appears within it.
 
 ## Fetching
 Honest UA `Mozilla/5.0 (compatible; bulldogjob-cli/1.0)` works (HTTP 200, no bot wall observed).

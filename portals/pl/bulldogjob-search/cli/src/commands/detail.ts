@@ -47,21 +47,21 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
         job.title,
         `${job.company || "—"} · ${job.location || "—"}`,
         "",
-        job.level ? `Level: ${job.level}` : "",
-        job.employmentType ? `Employment: ${job.employmentType}` : "",
-        job.contracts.length ? `Contracts: ${job.contracts.join(", ")}` : "",
-        job.salary ? `Salary: ${job.salary}` : "",
-        job.workModes.length ? `Work mode: ${job.workModes.join(", ")}` : "",
-        job.workFrom.length ? `Work from: ${job.workFrom.join(", ")}` : "",
-        job.tags.length ? `Tech: ${job.tags.join(", ")}` : "",
-        job.date ? `Published: ${job.date}` : "",
-        job.deadline ? `Deadline: ${job.deadline}` : "",
+        job.level ? `Level: ${job.level}` : null,
+        job.employmentType ? `Employment: ${job.employmentType}` : null,
+        job.contracts.length ? `Contracts: ${job.contracts.join(", ")}` : null,
+        job.salary ? `Salary: ${job.salary}` : null,
+        job.workModes.length ? `Work mode: ${job.workModes.join(", ")}` : null,
+        job.workFrom.length ? `Work from: ${job.workFrom.join(", ")}` : null,
+        job.tags.length ? `Tech: ${job.tags.join(", ")}` : null,
+        job.date ? `Published: ${job.date}` : null,
+        job.deadline ? `Deadline: ${job.deadline}` : null,
         `Status: ${job.isActive ? "ACTIVE" : "CLOSED / EXPIRED"}`,
         "",
         job.description || "(no description)",
         "",
         `URL: ${job.url}`,
-      ].filter((l) => l !== "")
+      ].filter((l): l is string => l !== null)
       process.stdout.write(lines.join("\n") + "\n")
     } else {
       process.stdout.write(JSON.stringify(job, null, 2) + "\n")

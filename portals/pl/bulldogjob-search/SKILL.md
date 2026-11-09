@@ -57,10 +57,10 @@ bun run .agents/skills/bulldogjob-search/cli/src/cli.ts detail <id|slug|url> [--
 | `--role` | Role filter, e.g. `backend`, `frontend`, `fullstack`, `devops` |
 | `--level` | `junior` \| `medium` \| `senior` \| `lead` |
 | `--city`, `-l` | `Remote`, Warszawa, Kraków, Wrocław, Gdańsk, Łódź, Poznań, Katowice, Białystok, Rzeszów, Lublin (case/diacritics-insensitive). Anything else exits 1 |
-| `--jobage <days>` | Posted within N calendar days (yesterday counts under 1). **Client-side**: list pages carry no date, so this reads each result's detail page (one request per result, 300 ms apart). Implies `--dates` |
+| `--jobage <days>` | Posted within N calendar days (`--jobage 1` includes today and yesterday). **Client-side**: list pages carry no date, so this reads each result's detail page (one request per result, 300 ms apart). Implies `--dates`. An offer whose date lookup failed is kept with `date: null` (and reported as `DATE_LOOKUP_FAILED` on stderr), so not every result is guaranteed to be within N days |
 | `--dates` | Fill `date`/`postedAt` for every result (same extra requests) |
 | `--page <n>` | 1-indexed, 50 offers per page |
-| `--all` | Sweep pages until one adds nothing (cap 10 pages = 500 offers; warns `PAGE_CAP_REACHED`) |
+| `--all` | Sweep pages until one adds nothing (cap 10 pages = 500 offers; warns `PAGE_CAP_REACHED` only when the portal reports offers beyond the cap) |
 | `--limit`, `-n` | Cap results emitted |
 | `--format` | `json` (default) \| `table` \| `plain` |
 
@@ -101,6 +101,6 @@ values are `null`. `detail` adds `description`, `deadline`, `workModes`, `workFr
   for the real arrangement.
 - Detail accepts a bare number (`260906`; the portal redirects to the canonical slug), a
   slug, or a bulldogjob.pl URL. URLs on other hosts are rejected.
-- Salary is per month in the stated currency; `contracts` tells which contract it applies to.
+- Salary is the portal's own formatted text in the stated currency; the CLI does not read the `timeframe` field, so the pay period (month, hour) is whatever the text says. `contracts` tells which contract it applies to.
 - Data comes from the page's embedded Next.js JSON; if the site changes, the CLI fails with
   `PARSE_FAILED` instead of returning garbage. See `url-reference.md`.

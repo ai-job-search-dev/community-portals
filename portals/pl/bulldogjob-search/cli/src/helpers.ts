@@ -123,11 +123,22 @@ function isHiddenTag(attrs: string): boolean {
 }
 
 /**
+ * Opening tag: name, then attributes. Quoted attribute values may contain `>`,
+ * and HTML lets `/` separate the name from the first attribute (`<div/hidden>`),
+ * so both are matched here rather than ending the tag at the first `>`.
+ */
+const OPEN_TAG = /<([a-zA-Z][a-zA-Z0-9-]*)((?:[\s/](?:[^>"']|"[^"]*"|'[^']*')*)?)>/g
+
+/**
  * Drop markup a browser never renders - comments (including Word's
  * conditional ones), <script>/<style>/<template> blocks, and elements marked
  * hidden - before tags are stripped. A plain tag strip keeps their text, which
  * hands the model words the posting's reader never saw. CSS-only tricks
  * (off-screen, zero font size) need a renderer and are not caught here.
+ *
+ * `/>` does not close a non-void HTML element (`<div hidden/>` stays open until
+ * `</div>`), so it is treated as an ordinary opening tag; only void elements end
+ * at their own tag.
  */
 export function visibleHtml(html: string): string {
   const src = html
@@ -135,7 +146,7 @@ export function visibleHtml(html: string): string {
     .replace(/<(script|style|template)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
   // One pass, collecting what is kept: slicing the string per hidden element
   // would make a page full of them quadratic.
-  const open = /<([a-zA-Z][a-zA-Z0-9-]*)(\s[^>]*)?>/g
+  const open = new RegExp(OPEN_TAG.source, "g")
   const kept: string[] = []
   let from = 0
   let m: RegExpExecArray | null
@@ -143,18 +154,18 @@ export function visibleHtml(html: string): string {
     if (!m[2] || !isHiddenTag(m[2])) continue
     const tag = m[1].toLowerCase()
     let end = open.lastIndex
-    if (!VOID_TAGS.has(tag) && !m[0].endsWith("/>")) {
+    if (!VOID_TAGS.has(tag)) {
       // Skip to the matching close tag, counting nested same-name elements. An
       // unclosed hidden element runs to the end: failing closed drops visible
       // text, failing open would leak the hidden text.
-      const same = new RegExp(`<(/?)${tag}\\b[^>]*>`, "gi")
+      const same = new RegExp(`<(/?)${tag}\\b(?:[^>"']|"[^"]*"|'[^']*')*>`, "gi")
       same.lastIndex = end
       end = src.length
       let depth = 1
       let s: RegExpExecArray | null
       while ((s = same.exec(src)) !== null) {
         if (s[1]) depth--
-        else if (!s[0].endsWith("/>")) depth++
+        else depth++
         if (depth === 0) {
           end = same.lastIndex
           break
@@ -267,7 +278,7 @@ export function parseCard(raw: unknown): JobCard | null {
 }
 
 /** Parse a list page: each job independently, so one malformed entry cannot break the rest. */
-export function parseSearch(html: string): { total: number; cards: JobCard[] } {
+export function parseSearch(html: string): { total: number; cards: JobCard[]; rawCount: number } {
   const pp = extractPageProps(html)
   const jobs = Array.isArray(pp.jobs) ? pp.jobs : null
   if (!jobs) throw new PortalError("pageProps.jobs missing - bulldogjob markup changed", "PARSE_FAILED")
@@ -281,7 +292,7 @@ export function parseSearch(html: string): { total: number; cards: JobCard[] } {
     }
   }
   const total = typeof pp.totalCount === "number" ? pp.totalCount : cards.length
-  return { total, cards }
+  return { total, cards, rawCount: jobs.length }
 }
 
 export interface JobDetail extends JobCard {
@@ -322,7 +333,14 @@ function salaryDetail(j: Json): string | null {
 export function parseDetail(html: string, id: string): JobDetail {
   const pp = extractPageProps(html)
   const apollo = isObj(pp.__APOLLO_STATE__) ? pp.__APOLLO_STATE__ : null
-  const key = apollo ? Object.keys(apollo).find((k) => k.startsWith("Job:")) : undefined
+  // Prefer the entry for the requested offer: the Apollo state may hold other Job
+  // entries (related offers), and the first one is not necessarily this one. The
+  // key is `Job:<id>` or `Job:<leading number>`. Only when neither is present and the
+  // state holds a single Job entry is that one used; with several, refuse.
+  const wanted = /^\d+/.exec(id)?.[0]
+  const jobKeys = apollo ? Object.keys(apollo).filter((k) => k.startsWith("Job:")) : []
+  const exact = [`Job:${id}`, ...(wanted ? [`Job:${wanted}`] : [])].find((k) => jobKeys.includes(k))
+  const key = exact ?? (jobKeys.length === 1 ? jobKeys[0] : undefined)
   const job = apollo && key && isObj(apollo[key]) ? (apollo[key] as Json) : null
   if (!apollo || !job) throw new PortalError("Job entry missing from detail page - bulldogjob markup changed", "PARSE_FAILED")
 
