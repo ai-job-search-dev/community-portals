@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { runCLI } from "./helpers.js"
+import { FETCH_FIXTURE, runCLI } from "./helpers.js"
 
 function stderrJSON(stderr: string): { error: string; code: string } {
   return JSON.parse(stderr) as { error: string; code: string }
@@ -19,9 +19,10 @@ describe("flag validation", () => {
     expect(stderrJSON(r.stderr).code).toBe("PAGE_UNSUPPORTED")
   })
 
-  test("--page 1 is accepted", async () => {
-    const r = await runCLI(["search", "-q", "php", "--page", "1", "--limit", "1", "--format", "table"])
+  test("--page 1 is accepted (offline fixture, no network)", async () => {
+    const r = await runCLI(["search", "-q", "php", "--page", "1", "--limit", "1", "--format", "table"], FETCH_FIXTURE)
     expect(r.exitCode).toBe(0)
+    expect(r.stdout).toContain("Mid Symfony Developer")
   })
 
   test("a non-numeric --jobage is rejected", async () => {
@@ -52,5 +53,37 @@ describe("flag validation", () => {
     const r = await runCLI([])
     expect(r.exitCode).toBe(1)
     expect(r.stdout).toContain("USAGE")
+  })
+
+  test("a non-positive --jobage is rejected", async () => {
+    const r = await runCLI(["search", "--jobage", "0"])
+    expect(r.exitCode).toBe(1)
+    expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
+  })
+
+  test("a non-numeric --limit is rejected", async () => {
+    const r = await runCLI(["search", "--limit", "many"])
+    expect(r.exitCode).toBe(1)
+    expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
+  })
+
+  test("a bad --experience or --employment-type is rejected", async () => {
+    for (const args of [["--experience", "wizard"], ["--employment-type", "barter"]]) {
+      const r = await runCLI(["search", ...args])
+      expect(r.exitCode).toBe(1)
+      expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
+    }
+  })
+
+  test("an unknown flag on detail is rejected", async () => {
+    const r = await runCLI(["detail", "abc-php", "--bogus"])
+    expect(r.exitCode).toBe(1)
+    expect(stderrJSON(r.stderr).code).toBe("UNKNOWN_FLAG")
+  })
+
+  test("--help prints usage and exits 0", async () => {
+    const r = await runCLI(["search", "--help"])
+    expect(r.exitCode).toBe(0)
+    expect(r.stdout).toContain("SEARCH FLAGS")
   })
 })

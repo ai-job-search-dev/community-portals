@@ -8,8 +8,12 @@ export interface CLIResult {
   exitCode: number;
 }
 
-export async function runCLI(args: string[]): Promise<CLIResult> {
-  const proc = Bun.spawn(["bun", "run", CLI_PATH, ...args], {
+/**
+ * Run the real CLI in a child process. `preload` is a module Bun loads first, used to
+ * replace `fetch` with an offline fixture (see fixtures/fetch-fixture.ts).
+ */
+export async function runCLI(args: string[], preload?: string): Promise<CLIResult> {
+  const proc = Bun.spawn(["bun", "run", ...(preload ? ["--preload", preload] : []), CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -22,6 +26,9 @@ export async function runCLI(args: string[]): Promise<CLIResult> {
 
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }
+
+/** Path of the offline fetch fixture to pass as `runCLI`'s `preload`. */
+export const FETCH_FIXTURE = join(import.meta.dir, "fixtures/fetch-fixture.ts");
 
 export function parseJSON<T = unknown>(result: CLIResult): T {
   if (result.exitCode !== 0) {
