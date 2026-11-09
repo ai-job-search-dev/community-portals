@@ -168,12 +168,14 @@ export function normalizeRegion(input: string): string | null {
     europe: "eu",
     other: "other",
   }
-  return regions[input.trim().toLowerCase()] ?? null
+  const key = input.trim().toLowerCase()
+  return Object.hasOwn(regions, key) ? regions[key] : null
 }
 
 /**
  * Extract the inner HTML of a <div> identified by a CSS class name, correctly
- * handling nested <div> elements by tracking tag depth.
+ * handling nested <div> elements by tracking tag depth. Whole tags are matched,
+ * so a `</div>` inside a quoted attribute value does not end the element.
  */
 export function extractDivContent(html: string, className: string): string | null {
   const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -181,25 +183,19 @@ export function extractDivContent(html: string, className: string): string | nul
   const open = openRe.exec(html)
   if (!open) return null
 
-  let i = open.index + open[0].length
+  const start = open.index + open[0].length
+  // Every tag is matched in order, not just divs: searching for the next `</div`
+  // alone would find one inside another tag's attribute value.
+  const tags = new RegExp(`<(/?)([a-zA-Z][a-zA-Z0-9-]*)${ATTRS}${TAG_END}`, "g")
+  tags.lastIndex = start
   let depth = 1
-
-  while (depth > 0 && i < html.length) {
-    const nextOpen = html.indexOf("<div", i)
-    const nextClose = html.indexOf("</div>", i)
-
-    if (nextClose === -1) return null
-
-    if (nextOpen !== -1 && nextOpen < nextClose) {
-      depth++
-      i = nextOpen + 4
-    } else {
-      depth--
-      i = nextClose + 6
-    }
+  let m: RegExpExecArray | null
+  while ((m = tags.exec(html)) !== null) {
+    if (m[2].toLowerCase() !== "div") continue
+    depth += m[1] ? -1 : 1
+    if (depth === 0) return html.slice(start, m.index)
   }
-
-  return html.slice(open.index + open[0].length, i - 6)
+  return null
 }
 
 // The text-sanitising helpers below (numericEntity through stripTags) are
@@ -327,7 +323,8 @@ export function visibleHtml(html: string): string {
 }
 
 function stripTags(html: string): string {
-  return visibleHtml(html).replace(new RegExp(`<${ATTRS}${TAG_END}`, "g"), " ").replace(/\s+/g, " ").trim()
+  // Only `<` followed by a tag name opens a tag, as in a browser: `C++ < 3` is text.
+  return visibleHtml(html).replace(new RegExp(`</?[a-zA-Z]${ATTRS}${TAG_END}`, "g"), " ").replace(/\s+/g, " ").trim()
 }
 
 function clean(html: string): string {

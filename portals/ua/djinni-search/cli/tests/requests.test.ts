@@ -97,6 +97,13 @@ describe("search requests", () => {
     expect(JSON.parse(out.stdout).meta.count).toBe(1);
   });
 
+  test("a 404 on the search page is an error, not an empty result", async () => {
+    const { out } = mock([404]);
+    expect(await runSearch(base)).toBe(1);
+    expect(out.stdout).toBe("");
+    expect(JSON.parse(out.stderr).code).toBe("NOT_FOUND");
+  });
+
   test("a 403 is an error on stderr, not an empty result", async () => {
     const { out } = mock([403]);
     const code = await runSearch(base);
@@ -109,7 +116,7 @@ describe("search requests", () => {
 describe("detail requests", () => {
   const page = detailPage({ id: 855979, title: "Full-Stack Engineer", company: "Acme", descriptionHtml: "<p>Hello</p>" });
 
-  test("a bare id fetches the placeholder-slug path, which Djinni redirects", async () => {
+  test("a bare id fetches the placeholder-slug path", async () => {
     const { urls, out } = mock([page]);
     expect(await runDetail({ id: "855979", format: "json" })).toBe(0);
     expect(urls[0]).toBe("https://djinni.co/jobs/855979-x/");
@@ -140,5 +147,27 @@ describe("detail requests", () => {
     expect(await runDetail({ id: "https://boards.greenhouse.io/acme/jobs/855979", format: "json" })).toBe(1);
     expect(urls).toHaveLength(0);
     expect(JSON.parse(out.stderr).code).toBe("BAD_ID");
+  });
+});
+describe("text extraction", () => {
+  test("a raw < that opens no tag stays in the text, as in a browser", async () => {
+    const page = searchPage([card({ id: "900001", title: "C++ < 3 > 1 Dev", company: "Acme" })], [ld({ id: 900001, title: "x" })], 1);
+    const { out } = mock([page]);
+    expect(await runSearch(base)).toBe(0);
+    expect(JSON.parse(out.stdout).results[0].title).toBe("C++ < 3 > 1 Dev");
+  });
+
+  test("a close tag inside an attribute does not cut the description short", async () => {
+    const page = detailPage({
+      id: 855979,
+      title: "Engineer",
+      company: "Acme",
+      descriptionHtml: '<p><a title="</div>">First</a> line</p><div><p>Second line</p></div>',
+    });
+    const { out } = mock([page]);
+    expect(await runDetail({ id: "855979", format: "json" })).toBe(0);
+    const description = JSON.parse(out.stdout).description;
+    expect(description).toContain("First line");
+    expect(description).toContain("Second line");
   });
 });

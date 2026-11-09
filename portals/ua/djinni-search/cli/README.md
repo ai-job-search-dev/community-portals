@@ -14,7 +14,7 @@ board, and reading full postings.
 
 ```bash
 cd .agents/skills/djinni-search/cli
-bun install   # optional — only installs TypeScript dev types
+bun install   # optional — dev dependencies only (TypeScript compiler and Bun types)
 ```
 
 The CLI runs without any install because it has zero runtime dependencies.

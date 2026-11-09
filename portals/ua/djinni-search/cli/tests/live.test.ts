@@ -12,7 +12,7 @@ interface Job {
   description?: string | null;
 }
 
-describe.skipIf(!process.env.DJINNI_LIVE)("live djinni.co", () => {
+describe.skipIf(process.env.DJINNI_LIVE !== "1")("live djinni.co", () => {
   test("search returns real results and detail reads one of them", async () => {
     const search = parseJSON<{ meta: { count: number }; results: Job[] }>(
       await runCLI(["search", "-q", "React", "--employment", "remote", "--limit", "5"]),

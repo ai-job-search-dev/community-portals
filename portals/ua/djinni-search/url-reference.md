@@ -5,7 +5,7 @@ Public, unauthenticated pages on `djinni.co` used by this skill. Verified live o
 ## Access
 
 - `robots.txt` (`User-agent: *`) disallows only `/jobs2`, `/q`, `/developers`, `/free-jobs` and `/set_lang`. `/jobs/` and posting pages are allowed.
-- The terms page (`/pricing`, linked as "Умови користування") bans employers from harvesting candidates' contacts or personal data by parsing; it says nothing about reading public vacancy listings.
+- The terms page (`/pricing`, linked as "Умови користування") bans employers from harvesting candidates' contacts or personal data by parsing. This skill reads only public vacancy listings and never candidate data; for anything beyond low-volume personal use, check the current terms yourself.
 - No login, API key or bot wall: plain `fetch` with an honest User-Agent (`Mozilla/5.0 (compatible; djinni-cli/1.0)`) gets HTTP 200.
 - Pages render in Ukrainian for anonymous visitors whatever `Accept-Language` says. `/set_lang` would switch it, but robots.txt disallows it, so the CLI parses Ukrainian labels.
 

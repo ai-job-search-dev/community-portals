@@ -56,6 +56,19 @@ describe("Djinni CLI flag validation", () => {
   test("a stray argument after the detail id is rejected", () =>
     expectBadArg(["detail", "123456", "extra"], "BAD_ARG", /"extra"/));
 
+  // Names on Object.prototype must not pass as known commands, flags or values.
+  test("a prototype-named command with a flag is BAD_CMD", () =>
+    expectBadArg(["constructor", "--format", "json"], "BAD_CMD"));
+
+  test("a prototype-named flag is rejected by name", () =>
+    expectBadArg(["detail", "123456", "--__proto__", "x"], "UNKNOWN_FLAG", /--__proto__/));
+
+  test("a prototype-named --search-type is rejected", () =>
+    expectBadArg(["search", "-q", "a", "--search-type", "constructor"], "BAD_ARG", /search-type/));
+
+  test("a prototype-named --region is rejected", () =>
+    expectBadArg(["search", "--region", "constructor"], "BAD_ARG", /region/));
+
   test("detail without an id is NO_ID", () => expectBadArg(["detail"], "NO_ID"));
 
   test("detail with an off-host URL is BAD_ID", () => expectBadArg(["detail", "https://jobs.lever.co/acme/855979"], "BAD_ID"));

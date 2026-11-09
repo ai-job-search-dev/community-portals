@@ -23,12 +23,15 @@ interface Flags {
 }
 
 function parseFlags(argv: string[]): Flags {
-  const flags: Flags = { _: [] }
+  // No prototype, so a flag named `__proto__` or `constructor` is an ordinary
+  // own key that the unknown-flag check sees, not an inherited one.
+  const flags: Flags = Object.assign(Object.create(null), { _: [] })
   const alias: Record<string, string> = { q: "query", c: "category", l: "location", n: "limit" }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a.startsWith("--") || a.startsWith("-")) {
-      const key = alias[a.replace(/^-+/, "")] ?? a.replace(/^-+/, "")
+      const name = a.replace(/^-+/, "")
+      const key = Object.hasOwn(alias, name) ? alias[name] : name
       const next = argv[i + 1]
       if (next === undefined || next.startsWith("-")) {
         flags[key] = true
@@ -104,7 +107,7 @@ async function main(): Promise<number> {
   // Reject unknown flags instead of silently discarding them: a discarded
   // filter changes what the search returns with no error. A bogus flag
   // exits 1 with a JSON error on stderr.
-  const knownFlags = KNOWN_FLAGS[cmd]
+  const knownFlags = Object.hasOwn(KNOWN_FLAGS, cmd) ? KNOWN_FLAGS[cmd] : undefined
   if (knownFlags) {
     for (const key of Object.keys(flags)) {
       if (key === "_" || knownFlags.has(key)) continue
@@ -153,7 +156,8 @@ async function main(): Promise<number> {
     const rawType = text("search-type")
     if (rawType === null) return fail("--search-type requires a value")
     if (rawType !== undefined) {
-      searchType = SEARCH_TYPES[rawType.toLowerCase()]
+      const typeKey = rawType.toLowerCase()
+      searchType = Object.hasOwn(SEARCH_TYPES, typeKey) ? SEARCH_TYPES[typeKey] : undefined
       if (!searchType) return fail(`--search-type must be one of basic|full-text|title, got "${rawType}"`)
       if (!query) return fail("--search-type only applies together with --query")
     }

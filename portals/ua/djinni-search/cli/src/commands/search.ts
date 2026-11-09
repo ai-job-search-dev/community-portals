@@ -96,6 +96,12 @@ function renderPlain(cards: JobCard[]): string {
 export async function runSearch(opts: SearchOpts): Promise<number> {
   try {
     const html = await htmlFetch(buildUrl(opts))
+    // htmlFetch maps a 404 to "". For a posting that means it is gone; for the
+    // search page it means Djinni moved it, which must not pass as zero results.
+    if (html === "") {
+      writeError("Djinni's search page returned 404 - its URL may have changed", "NOT_FOUND")
+      return 1
+    }
     let cards = stripInvisible(parseSearchPage(html, { maxAgeDays: opts.jobage }))
     if (opts.limit !== undefined && opts.limit >= 0) cards = cards.slice(0, opts.limit)
 
