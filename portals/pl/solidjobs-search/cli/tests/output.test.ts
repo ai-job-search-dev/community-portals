@@ -185,6 +185,7 @@ describe("invisible characters never reach the output", () => {
       expect(await runDetail({ id: "abc123xy", format })).toBe(0)
       expect(out()).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E]/)
       expect(out()).toContain("Backend")
+      expect(out()).toContain("ok text")
     }
   })
 })
