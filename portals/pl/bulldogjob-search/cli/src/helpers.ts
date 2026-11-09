@@ -63,18 +63,26 @@ function numericEntity(cp: number): string {
   return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ""
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+}
+
+/**
+ * Decode HTML entities in a single pass, so `&amp;lt;` becomes the literal text
+ * `&lt;` rather than being decoded a second time into `<`. Numeric references
+ * are decimal (&#233;) or hexadecimal (&#xE9;); an out-of-range value is dropped
+ * rather than thrown.
+ */
 function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    // Numeric character references: decimal (&#233;) and hexadecimal (&#xE9;).
-    .replace(/&#(\d+);/g, (_, dec) => numericEntity(parseInt(dec, 10)))
-    .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, hex) => numericEntity(parseInt(hex, 16)))
-    .replace(/&nbsp;/g, " ")
+  return text.replace(/&(?:(amp|lt|gt|quot|apos|nbsp)|#(\d+)|#[xX]([0-9a-fA-F]+));/g, (_match, name, dec, hex) => {
+    if (name) return NAMED_ENTITIES[name]!
+    return numericEntity(dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16))
+  })
 }
 
 /**

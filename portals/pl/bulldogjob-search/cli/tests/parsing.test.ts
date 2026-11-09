@@ -175,3 +175,20 @@ describe("normalizeId", () => {
     expect(normalizeId("php developer")).toBeNull()
   })
 })
+
+describe("entity decoding", () => {
+  test("is single-pass: &amp;lt; yields the text &lt;, not <", () => {
+    expect(htmlToText("<p>a &amp;lt; b</p>")).toBe("a &lt; b")
+    expect(htmlToText("<p>&amp;amp;</p>")).toBe("&amp;")
+  })
+
+  test("still decodes named and numeric entities", () => {
+    expect(htmlToText("<p>&lt;b&gt; &quot;x&quot; &#39;y&#39; &apos;z&apos; &amp; &#233; &#xE9; a&nbsp;b</p>")).toBe(
+      "<b> \"x\" 'y' 'z' & \u00e9 \u00e9 a b",
+    )
+  })
+
+  test("an out-of-range numeric entity is dropped, never thrown", () => {
+    expect(htmlToText("<p>a&#1114112;b</p>")).toBe("ab")
+  })
+})

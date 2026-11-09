@@ -102,6 +102,16 @@ async function main(): Promise<number> {
     }
   }
 
+  // Extra positionals are never silently ignored: `search -q php Symfony` would
+  // otherwise search for "php" alone.
+  const positionals = flags._ as string[]
+  if (cmd === "search" && positionals.length > 1) {
+    return fail(`unexpected argument "${positionals[1]}" - search takes only flags; pass keywords with -q "<text>"`, "BAD_ARG")
+  }
+  if (cmd === "detail" && positionals.length > 2) {
+    return fail(`unexpected argument "${positionals[2]}" - detail takes a single <id|slug|url>`, "BAD_ARG")
+  }
+
   if (cmd === "search") {
     const textFlag = (name: string): string | undefined | null => {
       const v = flags[name]
