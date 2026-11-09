@@ -49,8 +49,18 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     return 1
   }
 
+  // htmlFetch maps a 404 to "". An unknown category or location is a 404, and
+  // must not read as a successful search that simply found nothing.
+  if (!html) {
+    writeError(
+      `justjoin.it has no listing page for this search (HTTP 404) - check --category and --location: ${buildSearchUrl(opts)}`,
+      "NOT_FOUND",
+    )
+    return 1
+  }
+
   const payload = extractRscPayload(html)
-  if (html && !payload) {
+  if (!payload) {
     writeError(
       "justjoin.it returned a page with no readable data payload - the site's rendering has probably changed; see url-reference.md for the parsing anchors",
       "PARSE_FAILED",

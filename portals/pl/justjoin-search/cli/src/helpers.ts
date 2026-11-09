@@ -284,18 +284,30 @@ export function normalizeOffer(raw: Record<string, unknown>): JobCard | null {
   }
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: " ",
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+}
+
+/**
+ * Decode HTML entities in a single pass, so `&amp;lt;` becomes the literal text
+ * `&lt;` rather than being decoded a second time into `<`. A numeric entity
+ * naming an invalid code point (out of range, NUL, a lone surrogate) is left as
+ * written instead of throwing.
+ */
 export function decodeEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&#x?([0-9a-fA-F]+);/g, (_, code: string) =>
-      String.fromCodePoint(parseInt(code, /^x/i.test(_.slice(2, 3)) ? 16 : 10)),
-    )
+  return text.replace(/&(?:(nbsp|amp|lt|gt|quot|apos)|#(\d+)|#[xX]([0-9a-fA-F]+));/g, (match, name, dec, hex) => {
+    if (name) return NAMED_ENTITIES[name]!
+    const code = dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16)
+    if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) {
+      return match
+    }
+    return String.fromCodePoint(code)
+  })
 }
 
 export function stripHtml(html: string): string {
@@ -334,10 +346,12 @@ export function parseJobDetail(html: string, id: string): JobDetail | null {
   // The RSC payload carries fields JSON-LD omits (workplace type, seniority,
   // required skills) and the description's real HTML, so we read both and merge.
   const payload = extractRscPayload(html)
+  // Only an offer whose slug is the requested one counts. Falling back to
+  // "whichever offer is embedded" would label some other job with this id/URL.
+  const envelope = parseDetailOffer(payload)
   const rawOffer =
-    parseDetailOffer(payload) ??
+    (envelope && envelope.slug === id ? envelope : null) ??
     parseOffers(payload).find((o) => o.slug === id) ??
-    parseOffers(payload)[0] ??
     null
   const card = rawOffer ? normalizeOffer(rawOffer) : null
 
@@ -424,6 +438,11 @@ export function locationSlug(location: string | undefined): string {
     .replace(/\u0142/g, "l")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+}
+
+/** One URL path segment made only of characters a justjoin slug or category uses. */
+export function isSafeSegment(s: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(s)
 }
 
 export function slugFromIdOrUrl(input: string): string {

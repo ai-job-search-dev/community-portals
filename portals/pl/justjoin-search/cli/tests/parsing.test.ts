@@ -12,6 +12,8 @@ import {
   slugFromIdOrUrl,
   filterByAge,
   stripHtml,
+  decodeEntities,
+  isSafeSegment,
   formatSalary,
   type JobCard,
 } from "../src/helpers.js"
@@ -230,5 +232,42 @@ describe("formatSalary", () => {
 
   test("renders a dash when the offer discloses nothing", () => {
     expect(formatSalary(null)).toBe("-")
+  })
+})
+
+describe("decodeEntities", () => {
+  test("decodes named and numeric entities", () => {
+    expect(decodeEntities("a&nbsp;b &amp; c &lt;d&gt; &quot;e&quot; &#39;f&#39; &#x41; &#65; &apos;")).toBe(
+      "a b & c <d> \"e\" 'f' A A '",
+    )
+  })
+
+  test("is single-pass: &amp;lt; yields the text &lt;, not <", () => {
+    expect(decodeEntities("&amp;lt;")).toBe("&lt;")
+    expect(decodeEntities("&amp;amp;")).toBe("&amp;")
+  })
+
+  test("an out-of-range or invalid numeric entity is left as written, never thrown", () => {
+    for (const bad of ["&#1114112;", "&#x110000;", "&#99999999999;", "&#0;", "&#xD800;"]) {
+      expect(decodeEntities(`x ${bad} y`)).toBe(`x ${bad} y`)
+    }
+  })
+
+  test("stripHtml survives a malformed entity in a description", () => {
+    expect(stripHtml("<p>ok &#1114112; ok</p>")).toBe("ok &#1114112; ok")
+  })
+})
+
+describe("isSafeSegment", () => {
+  test("accepts slugs and categories", () => {
+    for (const s of ["php", "c-level", "bitbag-mid-symfony-developer-opole-php-894bb716", "data_science"]) {
+      expect(isSafeSegment(s)).toBe(true)
+    }
+  })
+
+  test("rejects anything that could leave the path segment", () => {
+    for (const s of ["", "..", "../api", "a/b", "a?b", "a#b", "%2e%2e", "-x", ".hidden", "a b"]) {
+      expect(isSafeSegment(s)).toBe(false)
+    }
   })
 })

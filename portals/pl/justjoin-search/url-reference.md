@@ -129,6 +129,7 @@ The detail page's offer object is **not** shaped like a search result:
 
 | Symptom | Likely cause |
 |---------|--------------|
+| `NOT_FOUND` on search | justjoin answered 404: the `--category` or `--location` slug does not exist as a listing page |
 | `PARSE_FAILED` on search | `self.__next_f` streaming replaced, or offer objects no longer lead with `applyUrl` |
 | Results present but `company`/`city` null | Offer object field names renamed |
 | Description runs sentences together | `resolveRscRef` failed and the code fell back to JSON-LD — check the `<ref>:T<hex>,` chunk format |

@@ -103,11 +103,13 @@ describe("search output", () => {
     }
   })
 
-  test("a 404 list page yields an empty result, not an error", async () => {
+  test("a 404 list page (unknown category or city) exits 1 with NOT_FOUND, not an empty success", async () => {
     mockSite(() => [404, ""])
     const out = capture("stdout")
-    expect(await runSearch(base)).toBe(0)
-    expect(JSON.parse(out()).results).toEqual([])
+    const err = capture("stderr")
+    expect(await runSearch({ ...base, category: "no-such-category" })).toBe(1)
+    expect(out()).toBe("")
+    expect(JSON.parse(err()).code).toBe("NOT_FOUND")
   })
 
   test("--limit caps the emitted results", async () => {
@@ -206,6 +208,36 @@ describe("detail output", () => {
     const out = capture("stdout")
     await runDetail({ id: slug, format: "json" })
     expect(JSON.parse(out()).isActive).toBe(false)
+  })
+
+  test("an embedded offer with a different slug is never reported under the requested slug", async () => {
+    mockSite(() => rsc(`x:[{"offer":${JSON.stringify(offer(2))}}]`))
+    const out = capture("stdout")
+    const err = capture("stderr")
+    expect(await runDetail({ id: slug, format: "json" })).toBe(1)
+    expect(out()).toBe("")
+    expect(JSON.parse(err()).code).toBe("PARSE_FAILED")
+  })
+
+  test("with JSON-LD present, a foreign embedded offer contributes none of its fields", async () => {
+    mockSite(() => detailPage({ slug: "someone-else-9", title: "Other job", companyName: "OtherCo", workplaceType: "office" }))
+    const out = capture("stdout")
+    expect(await runDetail({ id: slug, format: "json" })).toBe(0)
+    const d = JSON.parse(out())
+    expect(d.id).toBe(slug)
+    expect(d.title).toBe("Role 1")
+    expect(d.workplaceType).toBeNull()
+    expect(d.skills).toEqual([])
+  })
+
+  test("a path-escaping slug is refused before any request is made", async () => {
+    const urls = mockSite(() => detailPage())
+    const err = capture("stderr")
+    for (const id of ["../api", "..%2Fapi", "a/../../api", "https://justjoin.it/job-offer/.."]) {
+      expect(await runDetail({ id, format: "json" })).toBe(1)
+    }
+    expect(urls).toEqual([])
+    expect(err()).toContain("BAD_ARG")
   })
 
   test("a 404 exits 1 with NOT_FOUND", async () => {
