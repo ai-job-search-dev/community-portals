@@ -35,7 +35,8 @@ the MIT-licensed client repo `solid-company/solid-jobs-client` on GitHub
 
 An invalid enum value → `400` with an RFC 9110 problem JSON
 (`{"errors":{"search.Categories":["The value 'X' is not valid."]},...}`). The CLI
-surfaces this as `BAD_REQUEST`. There is no remote or date parameter, so the CLI
+surfaces this as `BAD_REQUEST`. Enum values it can check locally (`--division`,
+`--experience`, `--remote`) are rejected earlier as `BAD_ARG`, before any request. There is no remote or date parameter, so the CLI
 applies `--remote` and `--jobage` client-side.
 
 ### Response
@@ -80,7 +81,10 @@ to `https://solid.jobs/offer/<number>/<slug>`, an Angular SSR page carrying:
   `experienceRequirements.monthsOfExperience` and `skills` (a comma-separated string).
   The page has two other JSON-LD blocks, `WebSite` and `Organization`, which are ignored.
 - `<script id="ng-state" type="application/json">`: the transfer state, which includes
-  `{"isFound":..,"isExpired":..,"jobOfferDetails":{..}}`. The CLI reads only `isExpired`.
+  `{"isFound":..,"isExpired":..,"jobOfferDetails":{..}}`. The CLI reads `isExpired` from
+  the parsed JSON by key (never by scanning the page text, which contains employer-written
+  copy). `isActive` is also `false` once the JSON-LD `validThrough` instant has passed
+  (a date-only value counts until the end of that UTC day), even if `isExpired` is absent.
 
 ## Other feeds (not used)
 

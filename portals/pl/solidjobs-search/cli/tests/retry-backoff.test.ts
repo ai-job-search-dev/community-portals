@@ -5,10 +5,16 @@ import { HttpError, fetchText } from "../src/helpers.ts"
 
 const originalFetch = globalThis.fetch
 const originalSetTimeout = globalThis.setTimeout
+// every delay the code asked for, recorded before the sleep is skipped
+let delays: number[] = []
 
 beforeEach(() => {
+  delays = []
   // Run backoff sleeps immediately; AbortSignal.timeout does not use this global.
-  globalThis.setTimeout = ((fn: () => void) => originalSetTimeout(fn, 0)) as unknown as typeof setTimeout
+  globalThis.setTimeout = ((fn: () => void, ms?: number) => {
+    delays.push(ms ?? 0)
+    return originalSetTimeout(fn, 0)
+  }) as unknown as typeof setTimeout
 })
 
 afterEach(() => {
@@ -71,5 +77,18 @@ describe("fetchText", () => {
     await fetchText("https://solid.jobs/x", "application/json")
     expect(headers.Accept).toBe("application/json")
     expect(headers["User-Agent"]).toContain("solidjobs-cli")
+  })
+
+  test("backoff doubles from 500 ms, capped at 8 s, with under 500 ms of jitter", async () => {
+    mockStatuses([429])
+    await fetchText("https://solid.jobs/x", "application/json").catch(() => undefined)
+    // six waits between seven attempts; the AbortSignal timeout does not go through this stub
+    const waits = delays.filter((d) => d >= 500)
+    expect(waits).toHaveLength(6)
+    const bases = [500, 1000, 2000, 4000, 8000, 8000]
+    waits.forEach((d, i) => {
+      expect(d).toBeGreaterThanOrEqual(bases[i]!)
+      expect(d).toBeLessThan(bases[i]! + 500)
+    })
   })
 })

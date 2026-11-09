@@ -6,8 +6,9 @@ description: >
   job board with 100% published salary ranges, or to look up one SOLID.Jobs offer.
   Covers Poland (all cities plus fully remote roles) across IT and seven other
   divisions, with filters for city, seniority, category/technology and minimum
-  salary — every result carries its B2B or employment-contract salary band. Uses the
-  portal's official public API, so no scraping and no key. Trigger phrases
+  salary — SOLID.Jobs requires a published salary range, so most results carry a B2B
+  or employment-contract band. Search uses the portal's official public API (no
+  key); detail reads the offer page's JSON-LD. Trigger phrases
   (English): find a job in Poland, Polish job board, SOLID.Jobs, solid jobs, IT jobs
   Poland with salary, B2B contract Poland, remote developer jobs Poland, "are there
   any <tech role> jobs in Warsaw/Gdańsk/Szczecin", look up this solid.jobs offer.
@@ -23,9 +24,11 @@ allowed-tools: Bash(bun run .agents/skills/solidjobs-search/cli/src/cli.ts *)
 
 Search live job offers from **[SOLID.Jobs](https://solid.jobs)**, a Polish job
 board that requires every offer to publish its salary range. The skill calls the
-portal's **official public REST API** (`/public-api/offers/{division}`), which
-SOLID.Jobs publishes for aggregators and AI agents. No account, no API key, and
-**zero runtime dependencies**: it runs with just `bun`.
+portal's **official public REST API** (`/public-api/offers/{division}`) for
+`search`, which SOLID.Jobs publishes for aggregators and AI agents. The API has no
+single-offer endpoint, so `detail` instead reads the schema.org JSON-LD that an
+offer page publishes for crawlers. No account, no API key, and **zero runtime
+dependencies**: it runs with just `bun`.
 
 ## Access and usage
 
@@ -112,17 +115,19 @@ bun run .agents/skills/solidjobs-search/cli/src/cli.ts detail mo6txlr4 --format 
 | `table` | Quick human scanning (id, title, company, city, mode, date, salary) |
 | `plain` | Reading a single offer's full detail (`detail` command) |
 
-Search JSON is `{ "meta": { "count", "page", "totalCount", "totalPages" }, "results": [...] }`.
+Search JSON is `{ "meta": { "count", "page", "pages", "totalCount", "totalPages", "truncated" }, "results": [...] }`.
+`pages` is how many pages were read and `truncated` is `true` when `--all` stopped at its page cap with more offers available.
 Each result carries the portal-skill contract fields `id`, `title`, `company`,
 `location`, `date` and `url`. It also carries `workplaceType` (`remote`/`hybrid`/`onsite`),
 `experienceLevel`, `category`, `subCategory`, `salary`, `secondarySalary`,
-`deadline`, `skills` and `languages`. Missing values are `null`, never omitted.
+`deadline`, `skills` and `languages`. Missing scalar values are `null`, never omitted;
+missing `skills` and `languages` are empty arrays (`[]`).
 `totalCount` is the server-side match count before the client-side filters run.
 All errors go to **stderr** as `{ "error": "...", "code": "..." }`, with exit code `1`.
 
 ## Notes
 
-- **Salary on every offer.** `salary` is
+- **Salary on most offers.** `salary` is `null` when an offer lists no band, otherwise
   `{ from, to, currency, period, employmentType }`: `period` is `Month` or `Hour`,
   and `employmentType` is `B2B`, `Permanent` and so on. An offer that lists both
   contract types puts the second one in `secondarySalary`. In `detail`,

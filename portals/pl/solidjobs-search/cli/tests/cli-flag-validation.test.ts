@@ -106,4 +106,20 @@ describe("flag validation", () => {
     expect(d.exitCode).toBe(1)
     expect(stderrJSON(d.stderr).code).toBe("BAD_ARG")
   })
+
+  test("an empty --min-salary is rejected, not read as zero", async () => {
+    for (const v of ["", "  "]) {
+      const r = await runCLI(["search", "-q", "php", "--min-salary", v])
+      expect(r.exitCode).toBe(1)
+      expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
+    }
+  })
+
+  test("an --experience with no real value is rejected, not read as no filter", async () => {
+    for (const v of [",", " , ,"]) {
+      const r = await runCLI(["search", "-q", "php", "--experience", v])
+      expect(r.exitCode).toBe(1)
+      expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
+    }
+  })
 })

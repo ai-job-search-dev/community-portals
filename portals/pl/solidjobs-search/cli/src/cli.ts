@@ -78,7 +78,8 @@ const KNOWN_FLAGS: Record<string, Set<string>> = {
 const FORMATS = ["json", "table", "plain"]
 
 function intFlag(name: string, raw: string | boolean | string[], min: number): number | null {
-  const val = typeof raw === "string" ? Number(raw.trim()) : NaN
+  // An empty or blank value is not zero: Number("") would otherwise pass.
+  const val = typeof raw === "string" && raw.trim() !== "" ? Number(raw.trim()) : NaN
   if (!Number.isInteger(val) || val < min) {
     writeError(`--${name} must be a whole number of at least ${min}, got "${raw}"`, "BAD_ARG")
     return null
@@ -159,7 +160,12 @@ async function main(): Promise<number> {
     let experience: string[] | undefined
     if (text.experience) {
       experience = []
-      for (const part of text.experience.split(",").map((s) => s.trim()).filter(Boolean)) {
+      const parts = text.experience.split(",").map((s) => s.trim()).filter(Boolean)
+      if (parts.length === 0) {
+        writeError(`--experience needs at least one of ${EXPERIENCES.join(", ")}, got "${text.experience}"`, "BAD_ARG")
+        return 1
+      }
+      for (const part of parts) {
         const c = canonical(part, EXPERIENCES)
         if (!c) {
           writeError(`--experience values must be from ${EXPERIENCES.join(", ")}, got "${part}"`, "BAD_ARG")

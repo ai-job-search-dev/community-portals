@@ -56,7 +56,7 @@ describe("search output", () => {
     const parsed = JSON.parse(out())
     expect(parsed.meta).toEqual({ count: 2, page: 1, pages: 1, totalCount: 2, totalPages: 1, truncated: false })
     const r = parsed.results[0]
-    for (const key of ["id", "title", "company", "location", "date", "url", "workplaceType", "salary", "deadline", "skills", "languages"]) {
+    for (const key of ["id", "title", "company", "location", "date", "url", "workplaceType", "experienceLevel", "category", "subCategory", "salary", "secondarySalary", "deadline", "skills", "languages"]) {
       expect(r).toHaveProperty(key)
     }
     expect(r.id).toBe("aaa111bb")
@@ -120,6 +120,7 @@ describe("search output", () => {
     const urls = mockResponse(200, apiBody([job("aaa111bb")]))
     capture("stdout")
     await runSearch({ ...base, all: true, pageDelayMs: 0 })
+    expect(urls.length).toBeGreaterThan(0)
     for (const u of urls) expect(new URL(u).hostname).toBe("solid.jobs")
   })
 
@@ -161,6 +162,32 @@ const posting = {
   validThrough: "2999-12-01T10:00:00+01:00",
   datePosted: "2026-10-20",
 }
+
+describe("invisible characters never reach the output", () => {
+  const dirty = job("aaa111bb", { title: "Role\u202E\u200B visible\u001B[31m", company: "Ac\u0007me" })
+
+  test("search json, table and plain are all sanitised", async () => {
+    for (const format of ["json", "table", "plain"] as const) {
+      mockResponse(200, apiBody([dirty]))
+      const out = capture("stdout")
+      expect(await runSearch({ ...base, format })).toBe(0)
+      // eslint-disable-next-line no-control-regex
+      expect(out()).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E]/)
+      expect(out()).toContain("visible")
+    }
+  })
+
+  test("detail json and plain are sanitised", async () => {
+    const hostile = { ...posting, title: "Back\u202Eend\u001B[31m", description: "<p>ok\u200B text</p>" }
+    for (const format of ["json", "plain"] as const) {
+      mockResponse(200, detailPage(hostile))
+      const out = capture("stdout")
+      expect(await runDetail({ id: "abc123xy", format })).toBe(0)
+      expect(out()).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E]/)
+      expect(out()).toContain("Backend")
+    }
+  })
+})
 
 describe("detail output", () => {
   test("json returns the parsed offer fetched from the short link", async () => {

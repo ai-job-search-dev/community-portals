@@ -1,4 +1,4 @@
-import { SITE_BASE, fetchText, formatSalary, parseJobDetail, writeError } from "../helpers.js"
+import { OFFER_CODE, SITE_BASE, fetchText, formatSalary, parseJobDetail, stripInvisible, writeError } from "../helpers.js"
 
 export interface DetailOpts {
   id: string
@@ -16,7 +16,7 @@ const SOLID_HOST = /^(www\.)?solid\.jobs$/i
  */
 export function normalizeId(input: string): { id: string; path: string } | null {
   const trimmed = input.trim()
-  if (/^[a-z0-9]{6,12}$/i.test(trimmed)) return { id: trimmed, path: `/o/${trimmed}` }
+  if (OFFER_CODE.test(trimmed)) return { id: trimmed, path: `/o/${trimmed}` }
 
   const hasScheme = /^https?:\/\//i.test(trimmed)
   if (!hasScheme && !/^(www\.)?solid\.jobs\//i.test(trimmed)) return null
@@ -47,11 +47,14 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
       writeError("Offer not found", "NOT_FOUND")
       return 1
     }
-    const job = parseJobDetail(html, ref.id, url)
-    if (!job) {
+    const parsed = parseJobDetail(html, ref.id, url)
+    if (!parsed) {
       writeError("Offer page carries no JobPosting data (removed offer or markup change)", "NOT_FOUND")
       return 1
     }
+    // Employer-controlled text: drop invisible and terminal-control characters
+    // before it reaches stdout, in every format.
+    const job = stripInvisible(parsed)
 
     if (opts.format === "plain") {
       const lines = [

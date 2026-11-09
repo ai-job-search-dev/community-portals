@@ -59,6 +59,103 @@ export async function fetchText(url: string, accept: string): Promise<string> {
   throw new Error("Request failed after max retries")
 }
 
+// ---------------------------------------------------------------- output safety
+
+/**
+ * Characters a reader of the posting never sees but a model reading this
+ * output does: C0/C1 controls other than tab, newline and carriage return, the
+ * soft hyphen, bidi marks/embeddings/overrides/isolates, zero-width characters
+ * and invisible operators, the BOM, variation selectors, and Unicode tag
+ * characters (U+E0000-E007F), which can spell out a whole hidden instruction.
+ * Listing text is third-party data, and these arrive raw in a portal's JSON or
+ * markup as easily as through a numeric entity.
+ */
+const INVISIBLE_CHARS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F­؜᠎​-‏‪-‮⁠-⁯︀-️﻿\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu
+
+/** Strip INVISIBLE_CHARS from every string in a result, recursively: the CLI's output boundary. */
+export function stripInvisible<T>(value: T): T {
+  if (typeof value === "string") return value.replace(INVISIBLE_CHARS, "") as T
+  if (Array.isArray(value)) return value.map(stripInvisible) as T
+  if (value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripInvisible(v)])) as T
+  }
+  return value
+}
+
+const VOID_TAGS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"])
+
+/** Whether an opening tag's attributes keep it from rendering: `hidden`, or an inline style that hides it. */
+function isHiddenTag(attrs: string): boolean {
+  for (const m of attrs.matchAll(/([^\s"'=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g)) {
+    const name = m[1].toLowerCase()
+    const value = m[2] ?? m[3] ?? m[4] ?? ""
+    if (name === "hidden") return true
+    if (name === "style" && /(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|mso-hide\s*:\s*all)\b/i.test(value)) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Opening tag: name, then attributes. Quoted attribute values may contain `>`,
+ * and HTML lets `/` separate the name from the first attribute (`<div/hidden>`),
+ * so both are matched here rather than ending the tag at the first `>`.
+ */
+const OPEN_TAG = /<([a-zA-Z][a-zA-Z0-9-]*)((?:[\s/](?:[^>"']|"[^"]*"|'[^']*')*)?)>/g
+
+/**
+ * Drop markup a browser never renders - comments (including Word's
+ * conditional ones), <script>/<style>/<template> blocks, and elements marked
+ * hidden - before tags are stripped. A plain tag strip keeps their text, which
+ * hands the model words the posting's reader never saw. CSS-only tricks
+ * (off-screen, zero font size) need a renderer and are not caught here.
+ *
+ * `/>` does not close a non-void HTML element (`<div hidden/>` stays open until
+ * `</div>`), so it is treated as an ordinary opening tag; only void elements end
+ * at their own tag.
+ */
+export function visibleHtml(html: string): string {
+  const src = html
+    .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
+    .replace(/<(script|style|template)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
+  // One pass, collecting what is kept: slicing the string per hidden element
+  // would make a page full of them quadratic.
+  const open = new RegExp(OPEN_TAG.source, "g")
+  const kept: string[] = []
+  let from = 0
+  let m: RegExpExecArray | null
+  while ((m = open.exec(src)) !== null) {
+    if (!m[2] || !isHiddenTag(m[2])) continue
+    const tag = m[1].toLowerCase()
+    let end = open.lastIndex
+    if (!VOID_TAGS.has(tag)) {
+      // Skip to the matching close tag, counting nested same-name elements. An
+      // unclosed hidden element runs to the end: failing closed drops visible
+      // text, failing open would leak the hidden text.
+      const same = new RegExp(`<(/?)${tag}\\b(?:[^>"']|"[^"]*"|'[^']*')*>`, "gi")
+      same.lastIndex = end
+      end = src.length
+      let depth = 1
+      let s: RegExpExecArray | null
+      while ((s = same.exec(src)) !== null) {
+        if (s[1]) depth--
+        else depth++
+        if (depth === 0) {
+          end = same.lastIndex
+          break
+        }
+      }
+    }
+    kept.push(src.slice(from, m.index))
+    from = end
+    open.lastIndex = end
+  }
+  kept.push(src.slice(from))
+  return kept.join("")
+}
+
 // ---------------------------------------------------------------- text
 
 function numericEntity(cp: number): string {
@@ -80,11 +177,13 @@ export function decodeHtmlEntities(text: string): string {
 
 /** HTML description -> readable text, keeping paragraph and list breaks. */
 export function htmlToText(html: string): string {
-  const withBreaks = html
+  // Markup a browser never renders (script/style/template, comments, hidden
+  // elements) must not reach the output as text.
+  const withBreaks = visibleHtml(html)
     .replace(/<\s*br\s*\/?>/gi, "\n")
     .replace(/<li[^>]*>/gi, "\n- ")
     .replace(/<\/(p|li|ul|ol|div|h\d)>/gi, "\n")
-  const text = decodeHtmlEntities(withBreaks.replace(/<[^>]+>/g, ""))
+  const text = decodeHtmlEntities(withBreaks.replace(/<\/?[a-zA-Z](?:[^>"']|"[^"]*"|'[^']*')*>/g, ""))
   return text
     .split("\n")
     .map((l) => l.replace(/[ \t]+/g, " ").trim())
@@ -161,6 +260,9 @@ export interface ApiPage {
  * appends the campaign as a trailing segment (`/o/<code>/<campaign>`), which is
  * dropped so stored URLs stay campaign-free.
  */
+/** An offer short code, as emitted by `search` and accepted by `detail <id>`. */
+export const OFFER_CODE = /^[a-z0-9]+$/i
+
 export function codeFromUrl(url: string): string | null {
   const m = url.match(/^https?:\/\/(?:www\.)?solid\.jobs\/o\/([a-z0-9]+)(?:[/?#]|$)/i)
   return m ? m[1] : null
@@ -301,6 +403,30 @@ export function extractJobPosting(html: string): Json | null {
   return null
 }
 
+/** The offer's own `isExpired` flag from the page's `ng-state` JSON, or null when absent/unreadable. */
+export function transferStateExpired(html: string): boolean | null {
+  const m = /<script\b[^>]*\bid="ng-state"[^>]*>([\s\S]*?)<\/script>/i.exec(html)
+  if (!m) return null
+  let root: unknown
+  try {
+    root = JSON.parse(m[1])
+  } catch {
+    return null
+  }
+  const stack: unknown[] = [root]
+  while (stack.length) {
+    const v = stack.pop()
+    if (Array.isArray(v)) {
+      for (let i = v.length - 1; i >= 0; i--) stack.push(v[i])
+    } else if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>
+      if (typeof o.isExpired === "boolean") return o.isExpired
+      for (const k of Object.keys(o).reverse()) stack.push(o[k])
+    }
+  }
+  return null
+}
+
 export function parseJobDetail(html: string, id: string, pageUrl: string, now = Date.now()): JobDetail | null {
   const jp = extractJobPosting(html)
   if (!jp) return null
@@ -329,11 +455,19 @@ export function parseJobDetail(html: string, id: string, pageUrl: string, now = 
   const skills = typeof jp.skills === "string" ? jp.skills.split(",").map((s) => s.trim()).filter(Boolean) : []
 
   // The page's Angular transfer state carries the offer's own expiry flag; a
-  // past validThrough is the fallback signal when that flag is absent.
-  const expiredFlag = html.match(/"isExpired"\s*:\s*(true|false)/)
+  // past validThrough is the fallback signal when that flag is absent. The flag
+  // is read from the parsed ng-state JSON by key, never by scanning page text:
+  // the offer description is employer-controlled and can contain `"isExpired"`.
+  const expiredFlag = transferStateExpired(html)
   const deadline = isoDate(str(jp.validThrough))
-  const pastDeadline = deadline ? Date.parse(deadline + "T23:59:59Z") < now : false
-  const isActive = (expiredFlag ? expiredFlag[1] === "false" : true) && !pastDeadline
+  // Compare the full validThrough instant. A date-only value runs to the end of
+  // that day (UTC); a timestamp is exact, so an offer that closed at 09:00 is
+  // not reported active until midnight.
+  const rawThrough = str(jp.validThrough)
+  let throughMs = rawThrough ? Date.parse(rawThrough) : NaN
+  if (rawThrough && /^\d{4}-\d{2}-\d{2}$/.test(rawThrough)) throughMs += 86399999
+  const pastDeadline = Number.isFinite(throughMs) && throughMs < now
+  const isActive = expiredFlag !== true && !pastDeadline
 
   return {
     id,

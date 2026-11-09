@@ -1,5 +1,16 @@
 import { describe, expect, test } from "bun:test"
-import { codeFromUrl, htmlToText, parseApiPage, parseJob, parseJobDetail, withinDays } from "../src/helpers.ts"
+import {
+  OFFER_CODE,
+  codeFromUrl,
+  htmlToText,
+  parseApiPage,
+  parseJob,
+  parseJobDetail,
+  stripInvisible,
+  transferStateExpired,
+  visibleHtml,
+  withinDays,
+} from "../src/helpers.ts"
 import { normalizeId } from "../src/commands/detail.ts"
 import { buildUrl } from "../src/commands/search.ts"
 
@@ -45,7 +56,9 @@ describe("parseJob", () => {
     expect(j.date).toBeNull()
     expect(j.salary).toBeNull()
     expect(j.location).toBe("Remote")
-    expect(Object.keys(j)).toContain("deadline")
+    expect(j.deadline).toBeNull()
+    expect(j.skills).toEqual([])
+    expect(j.languages).toEqual([])
   })
 
   test("one malformed job is skipped, not fatal", () => {
@@ -170,5 +183,85 @@ describe("parseJobDetail", () => {
 describe("htmlToText", () => {
   test("decodes entities once (no double-decoding)", () => {
     expect(htmlToText("<p>&amp;lt;tag&amp;gt;</p>")).toBe("&lt;tag&gt;")
+  })
+})
+
+describe("detail expiry", () => {
+  const now = Date.parse("2026-11-02T12:00:00Z")
+  const withDescription = (description: string, expiredInState: boolean) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      "@type": "JobPosting", title: "T", description, validThrough: "2999-01-01T00:00:00Z",
+    })}</script><script id="ng-state" type="application/json">${JSON.stringify({ x: { isFound: true, isExpired: expiredInState } })}</script>`
+
+  test("isExpired comes from the ng-state JSON, not from text the employer wrote", () => {
+    // employer copy that looks like the flag, in an offer that is not expired
+    const fake = '<p>"isExpired": true</p>'
+    expect(parseJobDetail(withDescription(fake, false), "a", "u", now)!.isActive).toBe(true)
+    // and a real expired flag still wins
+    expect(parseJobDetail(withDescription("<p>x</p>", true), "a", "u", now)!.isActive).toBe(false)
+  })
+
+  test("a page text containing the flag but no ng-state block is not read as expired", () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({ "@type": "JobPosting", title: "T", validThrough: "2999-01-01" })}</script><p>"isExpired": true</p>`
+    expect(parseJobDetail(html, "a", "u", now)!.isActive).toBe(true)
+  })
+
+  test("transferStateExpired finds the flag at any depth and tolerates bad JSON", () => {
+    expect(transferStateExpired('<script id="ng-state" type="application/json">{"a":[{"b":{"isExpired":true}}]}</script>')).toBe(true)
+    expect(transferStateExpired('<script id="ng-state" type="application/json">{ broken</script>')).toBeNull()
+    expect(transferStateExpired("<html></html>")).toBeNull()
+  })
+
+  const withThrough = (validThrough: string) =>
+    `<script type="application/ld+json">${JSON.stringify({ "@type": "JobPosting", title: "T", validThrough })}</script>`
+
+  test("a validThrough timestamp that has passed today closes the offer", () => {
+    // 09:00Z today, now is 12:00Z: closed, even though the date-only deadline is today
+    expect(parseJobDetail(withThrough("2026-11-02T09:00:00Z"), "a", "u", now)!.isActive).toBe(false)
+    expect(parseJobDetail(withThrough("2026-11-02T18:00:00Z"), "a", "u", now)!.isActive).toBe(true)
+  })
+
+  test("a date-only validThrough stays open until the end of that day", () => {
+    expect(parseJobDetail(withThrough("2026-11-02"), "a", "u", now)!.isActive).toBe(true)
+    expect(parseJobDetail(withThrough("2026-11-01"), "a", "u", now)!.isActive).toBe(false)
+  })
+})
+
+describe("htmlToText hidden and non-rendered markup", () => {
+  test("drops script, style, template and comment contents", () => {
+    expect(htmlToText("<p>shown</p><script>evil()</script><style>p{}</style><template>T</template><!-- c -->")).toBe("shown")
+  })
+
+  test("drops hidden elements, including a trailing-slash form", () => {
+    expect(htmlToText('<p>shown</p><div hidden>SECRET</div><span style="display:none">SECRET</span><div hidden/>SECRET</div>')).toBe("shown")
+  })
+
+  test("keeps visible markup and quoted > in attributes", () => {
+    expect(htmlToText('<p title="a>b">kept</p>')).toBe("kept")
+  })
+})
+
+describe("stripInvisible", () => {
+  test("removes controls, escapes, bidi and zero-width characters recursively", () => {
+    const dirty = { a: "x\u202Ey\u200Bz\u001B[31m", b: ["\u0007ok", { c: "\uFEFFhi\u{E0041}" }], n: 3 }
+    expect(stripInvisible(dirty)).toEqual({ a: "xyz[31m", b: ["ok", { c: "hi" }], n: 3 })
+  })
+
+  test("leaves ordinary text, tabs and newlines alone", () => {
+    expect(stripInvisible("Łódź\tline\nnext — ok")).toBe("Łódź\tline\nnext — ok")
+  })
+})
+
+describe("offer code grammar is shared by search and detail", () => {
+  test("every code search can emit is accepted by detail", () => {
+    for (const code of ["a", "abc12", "xaev3a3s", "abcdefghij12", "a1b2c3d4e5f6g7h8"]) {
+      expect(codeFromUrl(`https://solid.jobs/o/${code}/campaign`)).toBe(code)
+      expect(OFFER_CODE.test(code)).toBe(true)
+      expect(normalizeId(code)).toEqual({ id: code, path: `/o/${code}` })
+    }
+  })
+
+  test("path tricks are not codes", () => {
+    for (const bad of ["", "..", "../api", "a/b", "a b", "a.b"]) expect(normalizeId(bad)).toBeNull()
   })
 })

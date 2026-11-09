@@ -7,6 +7,7 @@ import {
   parseApiPage,
   withinDays,
   writeError,
+  stripInvisible,
   type ApiPage,
   type JobResult,
 } from "../helpers.js"
@@ -111,7 +112,7 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
         }) + "\n",
       )
     }
-    let jobs = results
+    let jobs = stripInvisible(results)
     if (opts.remote) jobs = jobs.filter((j) => j.workplaceType === opts.remote)
     if (opts.jobage !== undefined) jobs = jobs.filter((j) => withinDays(j, opts.jobage as number))
     if (opts.limit !== undefined) jobs = jobs.slice(0, opts.limit)

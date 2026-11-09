@@ -9,7 +9,7 @@ bun install          # dev types only (typescript, @types/bun)
 bun run src/cli.ts search -q "php" --experience Senior --format table
 bun run src/cli.ts detail <code> --format plain
 bun run typecheck
-bun run test         # offline parser tests + a live smoke test
+bun run test         # offline tests only (mocked fetch); no network needed
 ```
 
 - `search` calls `GET /public-api/offers/{division}` with `search.*` filters, sorted newest first.
