@@ -140,14 +140,16 @@ describe("flag validation", () => {
 
   test("a --category that is not a single safe segment is rejected", async () => {
     for (const c of ["../../api", "a/b", "php?x=1", "%2e%2e"]) {
-      const r = await runCLI(["search", "--category", c])
+      const r = await runCLI(["search", "--category", c], FETCH_FIXTURE)
       expect(r.exitCode).toBe(1)
       expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
     }
   })
 
   test("detail refuses a path-escaping slug before any request", async () => {
-    const r = await runCLI(["detail", "../api"])
+    // FETCH_FIXTURE throws on any /job-offer request, so a validation that ran
+    // after the fetch would fail here instead of silently passing.
+    const r = await runCLI(["detail", "../api"], FETCH_FIXTURE)
     expect(r.exitCode).toBe(1)
     expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
   })

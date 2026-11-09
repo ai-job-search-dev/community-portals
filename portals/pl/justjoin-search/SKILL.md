@@ -5,9 +5,9 @@ description: >
   Use this skill to search live IT and software job listings on justjoin.it, the
   largest Polish tech job board, or to look up one justjoin.it posting. Covers the
   whole Polish market (all voivodeships and cities, plus fully remote roles), with
-  filters for workplace mode, seniority, contract type and disclosed salary — every
-  result carries its B2B or permanent salary band, because justjoin requires
-  employers to publish one. Trigger phrases (English): find a job in Poland, Polish
+  filters for workplace mode, seniority, contract type and disclosed salary — justjoin
+  requires employers to publish a salary band, so most results carry a B2B or
+  permanent one. Trigger phrases (English): find a job in Poland, Polish
   job board, justjoin, IT jobs Poland, B2B contract Poland, remote developer jobs
   Poland, "are there any <tech role> jobs in Warsaw/Kraków/Wrocław", look up this
   justjoin offer. Trigger phrases (Polish): oferty pracy IT, praca zdalna

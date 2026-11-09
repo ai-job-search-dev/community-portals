@@ -13,7 +13,7 @@ export interface CLIResult {
  * replace `fetch` with an offline fixture (see fixtures/fetch-fixture.ts).
  */
 export async function runCLI(args: string[], preload?: string): Promise<CLIResult> {
-  const proc = Bun.spawn(["bun", "run", ...(preload ? ["--preload", preload] : []), CLI_PATH, ...args], {
+  const proc = Bun.spawn([process.execPath, "run", ...(preload ? ["--preload", preload] : []), CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });

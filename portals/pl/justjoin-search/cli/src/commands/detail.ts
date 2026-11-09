@@ -54,13 +54,12 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     `posted ${job.date ?? "-"} | closes ${job.deadline ?? "-"} | ${job.isActive ? "open" : "EXPIRED"}`,
     `salary: ${formatSalary(job.salary)}`,
     `seniority: ${job.experienceLevel ?? "-"}`,
-    job.skills.length ? `skills: ${job.skills.join(", ")}` : "",
-    job.otherLocations.length ? `also in: ${job.otherLocations.join(", ")}` : "",
+    job.skills.length ? `skills: ${job.skills.join(", ")}` : null,
+    job.otherLocations.length ? `also in: ${job.otherLocations.join(", ")}` : null,
     job.url,
     "",
     job.description ?? "(no description)",
-    "",
-  ].filter((l) => l !== "")
+  ].filter((l): l is string => l !== null)
   process.stdout.write(lines.join("\n") + "\n")
   return 0
 }

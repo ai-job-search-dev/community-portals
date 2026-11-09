@@ -94,6 +94,16 @@ describe("search output", () => {
     expect(out()).toContain("https://justjoin.it/job-offer/bitbag-role-1")
   })
 
+  test("table marks a truncated title with an ellipsis and leaves short ones alone", async () => {
+    const long = "A".repeat(60)
+    mockSite(() => listPage(offer(1, { title: long }), offer(2)))
+    const out = capture("stdout")
+    await runSearch({ ...base, format: "table" })
+    expect(out()).toContain("A".repeat(43) + "…")
+    expect(out()).not.toContain("A".repeat(44))
+    expect(out()).toContain("Role 2 ")
+  })
+
   test("table and plain say so when nothing matches", async () => {
     mockSite(() => listPage())
     for (const format of ["table", "plain"] as const) {
@@ -201,6 +211,14 @@ describe("detail output", () => {
     capture("stdout")
     await runDetail({ id: `https://justjoin.it/job-offer/${slug}`, format: "json" })
     expect(urls).toEqual([`https://justjoin.it/job-offer/${slug}`])
+  })
+
+  test("plain output keeps the blank line before the description", async () => {
+    mockSite(() => detailPage())
+    const out = capture("stdout")
+    await runDetail({ id: slug, format: "plain" })
+    expect(out()).toContain(`https://justjoin.it/job-offer/${slug}\n\nZakres`)
+    expect(out().endsWith("\n")).toBe(true)
   })
 
   test("an offer flagged inactive is reported as expired", async () => {

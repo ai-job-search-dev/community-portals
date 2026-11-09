@@ -97,8 +97,10 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     return 0
   }
 
+  // Truncate with a marker so a cut-off title cannot pass for a complete one.
+  const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s)
   const rows = results.map((r) => [
-    (r.title ?? "").slice(0, 44),
+    clip(r.title ?? "", 44),
     (r.company ?? "-").slice(0, 22),
     (r.location ?? "-").slice(0, 14),
     (r.workplaceType ?? "-").slice(0, 7),

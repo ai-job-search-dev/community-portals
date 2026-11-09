@@ -54,7 +54,7 @@ describe("extractRscPayload", () => {
 
   test("skips a malformed chunk instead of losing the page", () => {
     const html = `<script>self.__next_f.push([1,"good"])</script><script>self.__next_f.push([1,"unterminated])</script><script>self.__next_f.push([1,"tail"])</script>`
-    expect(extractRscPayload(html)).toContain("good")
+    expect(extractRscPayload(html)).toBe("goodtail")
   })
 
   test("returns empty string when the page has no payload", () => {
@@ -82,6 +82,12 @@ describe("parseOffers", () => {
   test("extracts every offer and dedupes by slug", () => {
     const payload = `junk${JSON.stringify(OFFER)}more${JSON.stringify(OFFER)}`
     expect(parseOffers(payload)).toHaveLength(1)
+  })
+
+  test("extracts several distinct offers in order", () => {
+    const other = { ...OFFER, slug: "other-role-krakow-php", title: "Other role" }
+    const offers = parseOffers(`${JSON.stringify(OFFER)} , ${JSON.stringify(other)}`)
+    expect(offers.map((o) => o.slug)).toEqual([OFFER.slug, "other-role-krakow-php"])
   })
 
   test("a malformed offer does not cost the others", () => {
