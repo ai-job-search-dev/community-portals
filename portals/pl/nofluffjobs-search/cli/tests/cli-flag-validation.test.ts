@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { runCLI } from "./helpers.js"
+import { NO_NETWORK, runCLI } from "./helpers.js"
 
 function stderrJSON(stderr: string): { error: string; code: string } {
   return JSON.parse(stderr) as { error: string; code: string }
@@ -127,8 +127,9 @@ describe("flag validation", () => {
   })
 
   test("detail refuses a path-escaping slug before any request", async () => {
-    const r = await runCLI(["detail", "../api"])
+    const r = await runCLI(["detail", "../api"], NO_NETWORK)
     expect(r.exitCode).toBe(1)
+    expect(r.stderr).not.toContain("UNEXPECTED_REQUEST")
     expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
   })
 })

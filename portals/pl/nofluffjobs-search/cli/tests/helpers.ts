@@ -8,8 +8,12 @@ export interface CLIResult {
   exitCode: number;
 }
 
-export async function runCLI(args: string[]): Promise<CLIResult> {
-  const proc = Bun.spawn(["bun", "run", CLI_PATH, ...args], {
+/**
+ * Run the real CLI in a child process. `preload` is a module Bun loads first, used
+ * to replace `fetch` (see fixtures/no-network.ts).
+ */
+export async function runCLI(args: string[], preload?: string): Promise<CLIResult> {
+  const proc = Bun.spawn([process.execPath, "run", ...(preload ? ["--preload", preload] : []), CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -22,6 +26,9 @@ export async function runCLI(args: string[]): Promise<CLIResult> {
 
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }
+
+/** Preload that fails the test (and logs UNEXPECTED_REQUEST) if the CLI makes any request. */
+export const NO_NETWORK = join(import.meta.dir, "fixtures/no-network.ts");
 
 export function parseJSON<T = unknown>(result: CLIResult): T {
   if (result.exitCode !== 0) {
