@@ -124,6 +124,18 @@ async function main(): Promise<number> {
     }
   }
 
+  // Extra positionals are never silently ignored: `search PHP Symfony` would
+  // otherwise search with no keywords at all.
+  const positionals = flags._ as string[]
+  if (cmd === "search" && positionals.length > 1) {
+    writeError(`unexpected argument "${positionals[1]}" - search takes only flags; pass keywords with -q "<text>"`, "BAD_ARG")
+    return 1
+  }
+  if (cmd === "detail" && positionals.length > 2) {
+    writeError(`unexpected argument "${positionals[2]}" - detail takes a single <id|url>`, "BAD_ARG")
+    return 1
+  }
+
   const fmt = flags.format === undefined ? "json" : flags.format
   if (typeof fmt !== "string" || !FORMATS.includes(fmt) || (cmd === "detail" && fmt === "table")) {
     writeError(`--format must be ${cmd === "detail" ? "json or plain" : "json, table or plain"}, got "${fmt}"`, "BAD_ARG")

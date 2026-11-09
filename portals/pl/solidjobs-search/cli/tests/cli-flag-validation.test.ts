@@ -92,4 +92,18 @@ describe("flag validation", () => {
     expect(r.exitCode).toBe(0)
     expect(r.stdout).toContain("SEARCH FLAGS")
   })
+
+  test("stray positional arguments are rejected with a pointer to -q", async () => {
+    const r = await runCLI(["search", "PHP", "Symfony"])
+    expect(r.exitCode).toBe(1)
+    expect(r.stdout).toBe("")
+    expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
+    expect(stderrJSON(r.stderr).error).toContain("-q")
+    const q = await runCLI(["search", "-q", "php", "Symfony"])
+    expect(q.exitCode).toBe(1)
+    expect(stderrJSON(q.stderr).code).toBe("BAD_ARG")
+    const d = await runCLI(["detail", "12345", "extra"])
+    expect(d.exitCode).toBe(1)
+    expect(stderrJSON(d.stderr).code).toBe("BAD_ARG")
+  })
 })
