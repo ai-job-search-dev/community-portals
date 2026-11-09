@@ -60,4 +60,22 @@ describe("flag validation", () => {
     expect(r.exitCode).toBe(1)
     expect(r.stdout).toContain("USAGE")
   })
+
+  test("an unknown flag on detail is rejected", async () => {
+    const r = await runCLI(["detail", "abc-php", "--bogus"])
+    expect(r.exitCode).toBe(1)
+    expect(stderrJSON(r.stderr).code).toBe("UNKNOWN_FLAG")
+  })
+
+  test("a non-numeric --limit is rejected", async () => {
+    const r = await runCLI(["search", "--limit", "many"])
+    expect(r.exitCode).toBe(1)
+    expect(stderrJSON(r.stderr).code).toBe("BAD_ARG")
+  })
+
+  test("--help prints usage and exits 0", async () => {
+    const r = await runCLI(["search", "--help"])
+    expect(r.exitCode).toBe(0)
+    expect(r.stdout).toContain("SEARCH FLAGS")
+  })
 })
