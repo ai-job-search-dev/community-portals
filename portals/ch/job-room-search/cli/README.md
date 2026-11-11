@@ -28,8 +28,17 @@ bun install
 | `detail` | Fetch full detail for a single job listing |
 
 `search` accepts `--format json|table|plain`; `detail` accepts `--format json|plain` (default: `json`).
-All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and the process exits with code `1`.
-Requests retry with exponential backoff and jitter on `429` and `5xx`, up to six attempts, with a 15s per-request timeout.
+
+Errors are written to **stderr** as `{ "error": "...", "code": "..." }` and the process exits with code `1`.
+The one exception is running the CLI with no command at all: that prints usage to stdout and exits `1`,
+as `--help` does, because there is no operation to report an error about.
+
+Unknown flags, bare value-taking flags, unexpected positional arguments, and out-of-range values are
+rejected before any request is made — a silently dropped filter changes what the search returns.
+
+Requests retry with exponential backoff and jitter on `429` and `5xx`, six attempts in total.
+A `Retry-After` header is honoured when present (capped at 30s), with the backoff schedule as the
+fallback. Each request has a 15s timeout.
 
 ---
 
@@ -102,6 +111,19 @@ work forms, start/end dates, and the apply channel.
 
 ---
 
+## User-Agent
+
+The CLI identifies itself:
+
+```
+job-room-search/1.0 (+https://github.com/ai-job-search-dev/community-portals)
+```
+
+It does not impersonate a browser. Checked on 11 November 2026, the `jobadservice` search
+endpoint answers `200` to this UA exactly as it does to a spoofed desktop-Chrome string, so
+there is nothing to gain by disguising the client and an operator reading their logs can see
+what this is. The value is `UA` in `src/helpers.ts`.
+
 ## robots.txt
 
 `robots.txt` disallows `/job-search/` — the human-facing search UI, which this CLI does
@@ -109,6 +131,19 @@ not touch. It says nothing about the `/jobadservice/` API path used here. See
 `../url-reference.md` for the findings in full.
 
 ---
+
+## Error codes
+
+| Code | Meaning |
+|------|---------|
+| `UNKNOWN_FLAG` | A flag name this command does not accept |
+| `BAD_ARG` | A flag value that is missing, malformed, out of range, or an unexpected positional argument |
+| `BAD_CMD` | Not `search` or `detail` |
+| `NO_ID` | `detail` called without an id or URL |
+| `BAD_ID` | No job-room UUID could be parsed from the given id or URL |
+| `NOT_FOUND` | The API returned 404 for that id |
+| `SEARCH_FAILED` / `DETAIL_FAILED` | Non-200 response, or a transport/parse failure |
+| `INTERNAL_ERROR` | Unexpected throw not caught by a command |
 
 ## Tests
 

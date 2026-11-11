@@ -103,3 +103,22 @@ describe("ROMANDIE_CANTONS", () => {
     expect(Object.keys(ROMANDIE_CANTONS).sort()).toEqual(["FR", "GE", "JU", "NE", "VD", "VS"]);
   });
 });
+
+describe("decodeHtmlEntities, through stripHighlight", () => {
+  test("decodes each entity exactly once", () => {
+    // Chained .replace() calls decoded &amp; first, so &amp;lt; became "<".
+    expect(stripHighlight("&amp;lt;tag&amp;gt;")).toBe("&lt;tag&gt;");
+  });
+
+  test("decodes hex and decimal numeric entities", () => {
+    expect(stripHighlight("&#x41;&#66;&#x63;")).toBe("ABc");
+  });
+
+  test("leaves an unknown entity untouched rather than dropping it", () => {
+    expect(stripHighlight("Caf&eacute; &amp; bar")).toBe("Caf&eacute; & bar");
+  });
+
+  test("decodes non-breaking spaces to plain spaces", () => {
+    expect(stripHighlight("Genève&nbsp;SA")).toBe("Genève SA");
+  });
+});

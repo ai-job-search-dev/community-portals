@@ -37,19 +37,21 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     const job = toDetail(JSON.parse(res.body))
 
     if (opts.format === "plain") {
+      // Optional lines are null, not "", so filtering them out leaves the
+      // deliberate "" separators in place and the description keeps its spacing.
       const lines = [
         job.title,
         `${job.company || "—"} · ${job.city || "—"} (${job.cantonCode || "—"})`,
         "",
-        job.permanent !== null ? `Permanent: ${job.permanent ? "yes" : "no"}` : "",
-        job.workloadMin ? `Workload: ${job.workloadMin}${job.workloadMax && job.workloadMax !== job.workloadMin ? `-${job.workloadMax}` : ""}%` : "",
-        job.onlineSince ? `Online since: ${job.onlineSince}` : "",
+        job.permanent !== null ? `Permanent: ${job.permanent ? "yes" : "no"}` : null,
+        job.workloadMin ? `Workload: ${job.workloadMin}${job.workloadMax && job.workloadMax !== job.workloadMin ? `-${job.workloadMax}` : ""}%` : null,
+        job.onlineSince ? `Online since: ${job.onlineSince}` : null,
         "",
         job.description || "(no description)",
         "",
         `job-room id: ${job.id}`,
-        job.externalUrl ? `External listing (may syndicate from jobup.ch or similar): ${job.externalUrl}` : "",
-      ].filter((l) => l !== "")
+        job.externalUrl ? `External listing (may syndicate from jobup.ch or similar): ${job.externalUrl}` : null,
+      ].filter((l): l is string => l !== null)
       process.stdout.write(lines.join("\n") + "\n")
     } else {
       process.stdout.write(JSON.stringify(job, null, 2) + "\n")

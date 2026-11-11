@@ -25,7 +25,11 @@ function renderTable(cards: JobSummary[]): string {
   const rows = cards.map((c) => {
     const title = (c.title || "").slice(0, 40).padEnd(40)
     const company = (c.company || "—").slice(0, 22).padEnd(22)
-    const loc = `${c.city || "—"} (${c.cantonCode || "—"})`.slice(0, 22).padEnd(22)
+    // Truncate the city, not the joined string: slicing the pair cut the
+    // canton code off long city names.
+    const canton = `(${c.cantonCode || "—"})`
+    const city = (c.city || "—").slice(0, Math.max(22 - canton.length - 1, 1))
+    const loc = `${city} ${canton}`.padEnd(22)
     const wl =
       c.workloadMin && c.workloadMax
         ? c.workloadMin === c.workloadMax

@@ -5,9 +5,12 @@ Public, unauthenticated JSON REST API used by the official Swiss job platform
 d'État à l'économie) — the federal Public Employment Service ("service public de
 l'emploi", ORP/RAV in French/German-speaking Switzerland).
 
-`robots.txt` disallows crawling `/job-search/` (the human-facing search UI) but says
-nothing about the underlying `jobadservice` API used here, which is a distinct
-`www.job-room.ch/jobadservice/...` path serving JSON directly.
+**robots.txt, fetched 11 November 2026** (HTTP 200). Its only `Disallow` rules are
+`/job-search/` (the human-facing search UI) and `/aav/confirmation`; neither covers the
+`www.job-room.ch/jobadservice/...` API path used here, which serves JSON directly. The
+file's leading comment is nonetheless *"# Do not crawl Job Adverts"*, so the intent is
+broader than the paths it names — see the robots.txt section of `SKILL.md`, which quotes
+the file in full and explains why this skill ships personal-use and `enabled: false`.
 
 ## Search
 
@@ -87,7 +90,8 @@ Key field paths used by the CLI:
 - Title/description (per language): `jobAdvertisement.jobContent.jobDescriptions[].{languageIsoCode,title,description}`
   — a listing may have **multiple language variants**; the CLI picks fr → de → en → it, first match.
 - Company: `jobAdvertisement.jobContent.company.name`
-- Location: `jobAdvertisement.jobContent.location.{city,postalCode,cantonCode,communalCode,regionCode}`
+- Location: `jobAdvertisement.jobContent.location.{city,postalCode,cantonCode}`
+  — the response also carries `communalCode` and `regionCode`; the CLI does not read them.
 - Workload: `jobAdvertisement.jobContent.employment.{workloadPercentageMin,workloadPercentageMax,permanent}`
 - Publication window: `jobAdvertisement.publication.{startDate,endDate}`
 - Posted date proxy: `jobAdvertisement.createdTime` (no separate "online since" field on the search hit — `createdTime` is what the CLI reports as `onlineSince`, truncated to the date).
@@ -117,9 +121,11 @@ are otherwise identical). `<id>` is a UUID, e.g. `e75c4b4a-ff96-477c-908b-91fd64
 ## Quirks / notes
 
 - **No authentication required** for either endpoint.
-- Sort only supports `date_desc` / `date_asc` — `relevance` is rejected (400). If you
-  want relevance ordering, omit `sort` from ranking logic client-side or just use
-  `keywords` matching order as returned.
+- Sort only supports `date_desc` / `date_asc` — `relevance` is rejected with a 400, and the
+  CLI refuses it locally rather than passing it through. Omitting `sort` entirely was not
+  probed, so the API's default order is unknown; the CLI always sends one and defaults to
+  `date_desc`. For relevance-like ordering, request `date_desc` and re-rank client-side on
+  your own keyword scoring — the returned order is chronological, not scored.
 - **Syndication / dedup**: a large share of postings are external listings mirrored
   from other Swiss job boards (most commonly **jobup.ch**, also seen: direct employer
   career pages) via `jobContent.externalUrl`. `sourceSystem: "EXTERN"` marks these.

@@ -11,7 +11,8 @@ export interface CLIResult {
 /** Run the CLI as a subprocess. Tests stay network-free: every case here fails
  * validation before any request is made. */
 export async function runCLI(args: string[]): Promise<CLIResult> {
-  const proc = Bun.spawn(["bun", "run", CLI_PATH, ...args], {
+  // process.execPath, not a bare "bun": run the same binary as the test runner.
+  const proc = Bun.spawn([process.execPath, "run", CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });

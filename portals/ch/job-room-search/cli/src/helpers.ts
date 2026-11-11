@@ -11,9 +11,12 @@ export function writeError(error: string, code: string): void {
   process.stderr.write(JSON.stringify({ error, code }) + "\n")
 }
 
+// Identify the client honestly. The API serves the same 200 to an identifying
+// UA as to a spoofed browser one (verified 11 November 2026 against
+// /jobadservice/api/jobAdvertisements/_search), so there is no reason to
+// present this CLI as a browser.
 const UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
-  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  "job-room-search/1.0 (+https://github.com/ai-job-search-dev/community-portals)"
 
 export interface HttpResult {
   status: number
@@ -21,12 +24,28 @@ export interface HttpResult {
   body: string
 }
 
+const MAX_RETRY_AFTER_MS = 30000
+
+/** `Retry-After` is either a count of seconds or an HTTP date. Returns ms, or
+ * null when the header is absent or unparseable. */
+export function parseRetryAfter(header: string | null, now: number = Date.now()): number | null {
+  if (!header) return null
+  const trimmed = header.trim()
+  if (/^\d+$/.test(trimmed)) {
+    return Math.min(Number(trimmed) * 1000, MAX_RETRY_AFTER_MS)
+  }
+  const date = Date.parse(trimmed)
+  if (isNaN(date)) return null
+  return Math.min(Math.max(date - now, 0), MAX_RETRY_AFTER_MS)
+}
+
 /** Fetch JSON with exponential backoff on 429/5xx. */
 async function requestWithRetry(
   url: string,
   init: RequestInit,
 ): Promise<HttpResult> {
-  const maxRetries = 6
+  // Six attempts in total: the first plus five retries.
+  const maxRetries = 5
   let delay = 500
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, {
@@ -44,8 +63,11 @@ async function requestWithRetry(
       if (attempt === maxRetries) {
         return { status: response.status, headers: response.headers, body: await response.text() }
       }
-      const jitter = Math.floor(Math.random() * 500)
-      await new Promise((r) => setTimeout(r, delay + jitter))
+      // A server that says how long to wait is obeyed; the backoff schedule is
+      // the fallback. Capped so a hostile or mistaken header cannot hang the CLI.
+      const retryAfter = parseRetryAfter(response.headers.get("Retry-After"))
+      const wait = retryAfter ?? delay + Math.floor(Math.random() * 500)
+      await new Promise((r) => setTimeout(r, wait))
       delay = Math.min(delay * 2, 8000)
       continue
     }
@@ -70,18 +92,28 @@ function numericEntity(cp: number): string {
   return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ""
 }
 
-/** job-room returns some free-text fields (titles, company names) HTML-entity-encoded. */
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+}
+
+/** job-room returns some free-text fields (titles, company names) HTML-entity-encoded.
+ * Decoding happens in a single pass: chained .replace() calls decoded `&amp;` first,
+ * so an already-encoded `&amp;lt;` turned into `<` instead of the literal `&lt;`. */
 function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, dec) => numericEntity(parseInt(dec, 10)))
-    .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, hex) => numericEntity(parseInt(hex, 16)))
-    .replace(/&nbsp;/g, " ")
+  return text.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);/g, (match, body: string) => {
+    if (body.startsWith("#x") || body.startsWith("#X")) {
+      return numericEntity(parseInt(body.slice(2), 16)) || match
+    }
+    if (body.startsWith("#")) {
+      return numericEntity(parseInt(body.slice(1), 10)) || match
+    }
+    return NAMED_ENTITIES[body] ?? match
+  })
 }
 
 /** Strip <em>...</em> highlight tags job-room injects around matched keywords, and
@@ -98,8 +130,9 @@ export interface JobSummary {
   city: string | null
   cantonCode: string | null
   postalCode: string | null
-  workloadMin: string | null
-  workloadMax: string | null
+  // The API returns these as numbers (workloadPercentageMin: 80), not strings.
+  workloadMin: number | null
+  workloadMax: number | null
   permanent: boolean | null
   onlineSince: string | null
   publicationStart: string | null

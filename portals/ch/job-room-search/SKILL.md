@@ -34,8 +34,12 @@ days**. That window is exclusive to jobseekers registered with the RAV/ORP.
 
 For a RAV-registered user this is a real head start: covered roles appear here *before*
 jobup.ch, LinkedIn or the employer's own careers page, and applying inside the window means
-a much smaller applicant pool. The covered-occupation list is revised annually and was
-expanded on 1 January 2026, taking coverage from roughly 6.5% to 10.8% of the workforce.
+a much smaller applicant pool. The covered-occupation list is revised annually, published in
+the fourth quarter and valid from 1 January to 31 December. The 2026 list added occupations
+such as cooks and cleaning staff, taking coverage from 6.5% of the workforce in 2025 to 10.8%
+in 2026 — figures and dates per SECO/arbeit.swiss,
+[Job registration requirement from 2026](https://www.secoalv.admin.ch/secoalv/en/home/menue/unternehmen/stellenmeldepflicht/stellenmeldepflicht-ab-2026.html)
+(checked 11 November 2026).
 
 Practical consequence: in a Swiss fork, run this portal **first**, and search all relevant
 cantons in one call rather than just the home canton, e.g. all of Romandie with
@@ -44,7 +48,8 @@ cantons in one call rather than just the home canton, e.g. all of Romandie with
 ### Three API gotchas worth knowing
 
 1. **`detail` needs the full UUID.** `--format table` truncates the id to eight characters,
-   and feeding that back returns `{"error":"Could not parse a job-room UUID","code":"BAD_ID"}`.
+   and feeding that back returns
+   `{"error":"Could not parse a job-room UUID from \"e75c4b4a\"","code":"BAD_ID"}`.
    Use `--format json` to get the full `id` before any `detail` call.
 2. **No explicit job-registration flag exists in the API.** The closest usable signal is
    **`externalUrl`**: when present, the posting is already syndicated publicly (commonly from
@@ -58,9 +63,10 @@ cantons in one call rather than just the home canton, e.g. all of Romandie with
    under one term and not under a near-synonym. Run **several short queries** rather than one
    precise long one, and filter client-side.
 
-`languageIsoCode` on each result gives the posting language directly, which is more reliable
-than inferring it from the title — though not perfect (French-titled postings occasionally
-carry `"de"`), so treat a mismatch as inconclusive.
+`languageIsoCode` on each result is **not** the posting's original language: it reports which
+description variant the CLI selected, preferring `fr`, then `de`, `en`, `it`. A listing written
+in German that also carries a French translation therefore reports `fr`. Use it to know which
+text you are reading, not to infer the employer's working language.
 
 ## When to use this skill
 
@@ -128,8 +134,25 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
 ## Notes
 
 - Data is from job-room.ch's public `jobadservice` JSON API — no credentials required.
-  `robots.txt` disallows crawling the human-facing `/job-search/` UI but does not
-  restrict this separate `jobadservice` API path.
+- **robots.txt, fetched 11 November 2026** (https://www.job-room.ch/robots.txt, HTTP 200), in full:
+
+  ```
+  # Do not crawl Job Adverts
+  User-agent: *
+  User-agent: AdsBot-Google
+  Disallow: /job-search/
+
+  # Exclude confirmation pages and similar
+  User-agent: *
+  Disallow: /aav/confirmation
+  ```
+
+  By path, the only `Disallow` rules are `/job-search/` (the human-facing search UI) and
+  `/aav/confirmation`. This skill requests neither; it uses `/jobadservice/api/`, which no
+  rule names. Stated plainly, though: the file's own comment reads *"Do not crawl Job
+  Adverts"*, so the operator's intent is broader than the path it disallows. The path rules
+  permit this; the comment asks for restraint. Hence personal-use scope, low volume, and
+  `enabled: false` by default. This reading is the contributor's, not a ruling from SECO.
 - Many listings **syndicate from other Swiss job boards** (most commonly jobup.ch, or
   direct employer career pages) — see `jobContent.externalUrl` in `detail` output. The
   same role may be independently discoverable on the origin site; dedupe on

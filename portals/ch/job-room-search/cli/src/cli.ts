@@ -13,25 +13,53 @@ interface Flags {
   [k: string]: string | boolean | string[]
 }
 
+const ALIAS: Record<string, string> = { q: "query", n: "limit" }
+
 function parseFlags(argv: string[]): Flags {
   const flags: Flags = { _: [] }
-  const alias: Record<string, string> = { q: "query", n: "limit" }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
-    if (a.startsWith("--") || a.startsWith("-")) {
-      const key = alias[a.replace(/^-+/, "")] ?? a.replace(/^-+/, "")
-      const next = argv[i + 1]
-      if (next === undefined || next.startsWith("-")) {
-        flags[key] = true
-      } else {
-        flags[key] = next
-        i++
-      }
-    } else {
+    if (!a.startsWith("-")) {
       ;(flags._ as string[]).push(a)
+      continue
+    }
+    // --canton=GE is the same as --canton GE. Without this the whole
+    // "canton=GE" became the flag name and the filter was dropped silently.
+    const eq = a.indexOf("=")
+    if (eq > -1) {
+      const name = a.slice(0, eq).replace(/^-+/, "")
+      flags[ALIAS[name] ?? name] = a.slice(eq + 1)
+      continue
+    }
+    const name = a.replace(/^-+/, "")
+    const key = ALIAS[name] ?? name
+    const next = argv[i + 1]
+    // A flag with no following value (or another flag next) is a boolean.
+    // Validation below rejects that for the flags that need a value.
+    if (next === undefined || next.startsWith("-")) {
+      flags[key] = true
+    } else {
+      flags[key] = next
+      i++
     }
   }
   return flags
+}
+
+// Long-form flag names each command accepts; parseFlags resolves the short
+// aliases q/n to these first. "help"/"h" pass so `search --help` still works.
+const KNOWN_FLAGS: Record<string, Set<string>> = {
+  search: new Set([
+    "query", "canton", "workload-min", "workload-max", "page", "size", "limit", "sort", "format", "help", "h",
+  ]),
+  detail: new Set(["format", "help", "h"]),
+}
+
+// Flags that carry a value. A bare --canton or --sort parses as `true`, and
+// treating that as unset silently drops a filter or a sort order while exiting 0.
+const VALUE_FLAGS: Record<string, string[]> = {
+  search: ["query", "canton", "workload-min", "workload-max", "page", "size", "limit", "sort", "format"],
+  detail: ["format"],
 }
 
 const CANTON_LIST = Object.entries(ROMANDIE_CANTONS)
@@ -79,13 +107,51 @@ async function main(): Promise<number> {
     return cmd ? 0 : 1
   }
 
+  // Reject unknown flags instead of discarding them: a dropped filter changes
+  // what the search returns with no error at all.
+  const knownFlags = KNOWN_FLAGS[cmd]
+  if (knownFlags) {
+    for (const key of Object.keys(flags)) {
+      if (key === "_" || knownFlags.has(key)) continue
+      process.stderr.write(
+        JSON.stringify({
+          error: `unknown flag --${key} for '${cmd}' - flags are never silently ignored, because a discarded filter changes what the search returns; see --help for the supported flags`,
+          code: "UNKNOWN_FLAG",
+        }) + "\n",
+      )
+      return 1
+    }
+  }
+
+  const extra = (flags._ as string[]).slice(cmd === "detail" ? 2 : 1)
+  if (extra.length > 0) {
+    process.stderr.write(
+      JSON.stringify({ error: `unexpected argument "${extra[0]}" for '${cmd}'; see --help`, code: "BAD_ARG" }) + "\n",
+    )
+    return 1
+  }
+
+  for (const name of VALUE_FLAGS[cmd] ?? []) {
+    const value = flags[name]
+    if (value !== undefined && (typeof value !== "string" || !value.trim())) {
+      process.stderr.write(
+        JSON.stringify({ error: `--${name} requires a non-empty value`, code: "BAD_ARG" }) + "\n",
+      )
+      return 1
+    }
+  }
+
   if (cmd === "search") {
     const fmt = (flags.format as string) || "json"
 
+    // Number(), not parseInt(): parseInt reads a numeric prefix, so
+    // "--page 2oops" silently became 2 instead of failing validation.
     const parseIntFlag = (name: string, raw: string | boolean | string[]): number | null => {
-      const val = parseInt(raw as string, 10)
-      if (isNaN(val)) {
-        process.stderr.write(JSON.stringify({ error: `--${name} must be a number, got "${raw}"`, code: "BAD_ARG" }) + "\n")
+      const val = typeof raw === "string" ? Number(raw.trim()) : NaN
+      if (!Number.isInteger(val)) {
+        process.stderr.write(
+          JSON.stringify({ error: `--${name} must be a whole number, got "${raw}"`, code: "BAD_ARG" }) + "\n",
+        )
         return null
       }
       return val
@@ -117,6 +183,29 @@ async function main(): Promise<number> {
       const v = parseIntFlag("workload-max", flags["workload-max"])
       if (v === null) return 1
       workloadMax = v
+    }
+
+    // Out-of-range or contradictory bounds return an empty result set that
+    // looks like "no such jobs" rather than a bad request.
+    for (const [name, value] of [
+      ["workload-min", workloadMin],
+      ["workload-max", workloadMax],
+    ] as const) {
+      if (value !== undefined && (value < 0 || value > 100)) {
+        process.stderr.write(
+          JSON.stringify({ error: `--${name} must be between 0 and 100, got ${value}`, code: "BAD_ARG" }) + "\n",
+        )
+        return 1
+      }
+    }
+    if (workloadMin !== undefined && workloadMax !== undefined && workloadMin > workloadMax) {
+      process.stderr.write(
+        JSON.stringify({
+          error: `--workload-min (${workloadMin}) must not exceed --workload-max (${workloadMax})`,
+          code: "BAD_ARG",
+        }) + "\n",
+      )
+      return 1
     }
 
     const sort = typeof flags.sort === "string" ? flags.sort : "date_desc"
@@ -160,10 +249,13 @@ async function main(): Promise<number> {
       return 1
     }
     const fmt = (flags.format as string) || "json"
-    const opts: DetailOpts = {
-      id,
-      format: (fmt === "plain" ? "plain" : "json") as DetailOpts["format"],
+    if (!["json", "plain"].includes(fmt)) {
+      process.stderr.write(
+        JSON.stringify({ error: `--format must be json or plain for detail, got "${fmt}"`, code: "BAD_ARG" }) + "\n",
+      )
+      return 1
     }
+    const opts: DetailOpts = { id, format: fmt as DetailOpts["format"] }
     return runDetail(opts)
   }
 
