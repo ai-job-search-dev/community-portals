@@ -36,7 +36,10 @@ function parseFlags(argv: string[]): Flags {
     const next = argv[i + 1]
     // A flag with no following value (or another flag next) is a boolean.
     // Validation below rejects that for the flags that need a value.
-    if (next === undefined || next.startsWith("-")) {
+    // A negative number is a value, not a flag: "--page -1" parsed as a bare
+    // --page plus an unknown flag "--1", so the range check never saw it.
+    const nextIsValue = next !== undefined && (!next.startsWith("-") || /^-\d/.test(next))
+    if (!nextIsValue) {
       flags[key] = true
     } else {
       flags[key] = next
@@ -48,19 +51,19 @@ function parseFlags(argv: string[]): Flags {
 
 // Long-form flag names each command accepts; parseFlags resolves the short
 // aliases q/n to these first. "help"/"h" pass so `search --help` still works.
-const KNOWN_FLAGS: Record<string, Set<string>> = {
+const KNOWN_FLAGS: Record<string, Set<string>> = Object.assign(Object.create(null), {
   search: new Set([
     "query", "canton", "workload-min", "workload-max", "page", "size", "limit", "sort", "format", "help", "h",
   ]),
   detail: new Set(["format", "help", "h"]),
-}
+})
 
 // Flags that carry a value. A bare --canton or --sort parses as `true`, and
 // treating that as unset silently drops a filter or a sort order while exiting 0.
-const VALUE_FLAGS: Record<string, string[]> = {
+const VALUE_FLAGS: Record<string, string[]> = Object.assign(Object.create(null), {
   search: ["query", "canton", "workload-min", "workload-max", "page", "size", "limit", "sort", "format"],
   detail: ["format"],
-}
+})
 
 const CANTON_LIST = Object.entries(ROMANDIE_CANTONS)
   .map(([code, name]) => `${code}=${name}`)
@@ -105,6 +108,14 @@ async function main(): Promise<number> {
   if (!cmd || flags.help || flags.h) {
     process.stdout.write(HELP)
     return cmd ? 0 : 1
+  }
+
+  // Validate the command before anything indexes the flag tables by it.
+  // "toString" used to resolve to an inherited property and die as
+  // INTERNAL_ERROR, and "apply extra" reported BAD_ARG instead of BAD_CMD.
+  if (cmd !== "search" && cmd !== "detail") {
+    process.stderr.write(JSON.stringify({ error: `Unknown command "${cmd}"`, code: "BAD_CMD" }) + "\n")
+    return 1
   }
 
   // Reject unknown flags instead of discarding them: a dropped filter changes
@@ -157,11 +168,19 @@ async function main(): Promise<number> {
       return val
     }
 
+    // Rejected, not clamped: Math.max(1, v) turned --page 0 into page 1 and
+    // exited 0, so a caller paginating from zero silently re-read page one.
     let page = 1
     if (flags.page !== undefined) {
       const v = parseIntFlag("page", flags.page)
       if (v === null) return 1
-      page = Math.max(1, v)
+      if (v < 1) {
+        process.stderr.write(
+          JSON.stringify({ error: `--page must be at least 1, got ${v}`, code: "BAD_ARG" }) + "\n",
+        )
+        return 1
+      }
+      page = v
     }
 
     let size = 20
@@ -169,7 +188,13 @@ async function main(): Promise<number> {
     if (sizeRaw !== undefined) {
       const v = parseIntFlag("size", sizeRaw)
       if (v === null) return 1
-      size = Math.max(1, v)
+      if (v < 1) {
+        process.stderr.write(
+          JSON.stringify({ error: `--size must be at least 1, got ${v}`, code: "BAD_ARG" }) + "\n",
+        )
+        return 1
+      }
+      size = v
     }
 
     let workloadMin: number | undefined
@@ -216,13 +241,24 @@ async function main(): Promise<number> {
       return 1
     }
 
-    const cantons =
-      typeof flags.canton === "string"
-        ? flags.canton
-            .split(",")
-            .map((c) => c.trim().toUpperCase())
-            .filter(Boolean)
-        : undefined
+    let cantons: string[] | undefined
+    if (typeof flags.canton === "string") {
+      cantons = flags.canton
+        .split(",")
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean)
+      // "," and ", ," pass the non-empty check but leave nothing to filter on,
+      // which ran a Switzerland-wide search and exited 0.
+      if (cantons.length === 0) {
+        process.stderr.write(
+          JSON.stringify({
+            error: `--canton "${flags.canton}" contains no canton code`,
+            code: "BAD_ARG",
+          }) + "\n",
+        )
+        return 1
+      }
+    }
 
     if (!["json", "table", "plain"].includes(fmt)) {
       process.stderr.write(JSON.stringify({ error: `--format must be json, table, or plain, got "${fmt}"`, code: "BAD_ARG" }) + "\n")
@@ -259,7 +295,10 @@ async function main(): Promise<number> {
     return runDetail(opts)
   }
 
-  process.stderr.write(JSON.stringify({ error: `Unknown command "${cmd}"`, code: "BAD_CMD" }) + "\n")
+  // Unreachable: cmd is narrowed to "search" | "detail" above. Kept as a
+  // belt-and-braces exit rather than a throw, so the error contract holds if
+  // a command is ever added without a branch.
+  process.stderr.write(JSON.stringify({ error: `Unhandled command "${cmd}"`, code: "BAD_CMD" }) + "\n")
   return 1
 }
 

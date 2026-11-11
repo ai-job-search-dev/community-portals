@@ -125,3 +125,49 @@ describe("job-room CLI flag-name and value validation", () => {
     expect(error.error).toContain("--format must be json or plain");
   });
 });
+
+describe("job-room CLI hostile and edge-case input", () => {
+  test("an inherited property name is a bad command, not an internal error", async () => {
+    for (const cmd of ["toString", "constructor", "hasOwnProperty"]) {
+      const result = await runCLI([cmd]);
+      const error = JSON.parse(result.stderr);
+
+      expect(result.exitCode).toBe(1);
+      expect(error.code).toBe("BAD_CMD");
+    }
+  });
+
+  test("a bad command is reported as BAD_CMD even with extra arguments", async () => {
+    const result = await runCLI(["apply", "extra"]);
+
+    expect(JSON.parse(result.stderr).code).toBe("BAD_CMD");
+  });
+
+  test("a canton value with no code is rejected rather than searching all of Switzerland", async () => {
+    for (const value of [",", ", ,", " "]) {
+      const result = await runCLI(["search", "--canton", value]);
+      const error = JSON.parse(result.stderr);
+
+      expect(result.exitCode).toBe(1);
+      expect(error.code).toBe("BAD_ARG");
+    }
+  });
+
+  test("--page 0 and --size 0 are rejected, not clamped to 1", async () => {
+    for (const flag of ["--page", "--size"]) {
+      const result = await runCLI(["search", flag, "0"]);
+      const error = JSON.parse(result.stderr);
+
+      expect(result.exitCode).toBe(1);
+      expect(error.code).toBe("BAD_ARG");
+      expect(error.error).toContain("must be at least 1");
+    }
+  });
+
+  test("a negative page is rejected", async () => {
+    const result = await runCLI(["search", "--page", "-1"]);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stderr).code).toBe("BAD_ARG");
+  });
+});

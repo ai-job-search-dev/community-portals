@@ -93,6 +93,9 @@ Key field paths used by the CLI:
 - Location: `jobAdvertisement.jobContent.location.{city,postalCode,cantonCode}`
   — the response also carries `communalCode` and `regionCode`; the CLI does not read them.
 - Workload: `jobAdvertisement.jobContent.employment.{workloadPercentageMin,workloadPercentageMax,permanent}`
+  — the two percentages come back as **strings** (`"100"`, not `100`); `permanent` is a real boolean.
+  Re-verified against a live search response on 11 November 2026. The CLI passes the strings
+  through unchanged, so `JobSummary.workloadMin`/`workloadMax` are `string | null`.
 - Publication window: `jobAdvertisement.publication.{startDate,endDate}`
 - Posted date proxy: `jobAdvertisement.createdTime` (no separate "online since" field on the search hit — `createdTime` is what the CLI reports as `onlineSince`, truncated to the date).
 - Original source: `jobAdvertisement.jobContent.externalUrl`

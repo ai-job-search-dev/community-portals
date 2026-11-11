@@ -92,14 +92,17 @@ function numericEntity(cp: number): string {
   return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ""
 }
 
-const NAMED_ENTITIES: Record<string, string> = {
+// Object.create(null): a plain object literal inherits constructor, toString and
+// friends, so "&toString;" resolved to function source text and was spliced into
+// the output.
+const NAMED_ENTITIES: Record<string, string> = Object.assign(Object.create(null), {
   amp: "&",
   lt: "<",
   gt: ">",
   quot: '"',
   apos: "'",
   nbsp: " ",
-}
+})
 
 /** job-room returns some free-text fields (titles, company names) HTML-entity-encoded.
  * Decoding happens in a single pass: chained .replace() calls decoded `&amp;` first,
@@ -112,7 +115,7 @@ function decodeHtmlEntities(text: string): string {
     if (body.startsWith("#")) {
       return numericEntity(parseInt(body.slice(1), 10)) || match
     }
-    return NAMED_ENTITIES[body] ?? match
+    return Object.hasOwn(NAMED_ENTITIES, body) ? NAMED_ENTITIES[body] : match
   })
 }
 
@@ -130,9 +133,11 @@ export interface JobSummary {
   city: string | null
   cantonCode: string | null
   postalCode: string | null
-  // The API returns these as numbers (workloadPercentageMin: 80), not strings.
-  workloadMin: number | null
-  workloadMax: number | null
+  // Strings, not numbers: the API returns workloadPercentageMin: "100".
+  // Verified against a live search response on 11 November 2026, as
+  // url-reference.md records. Passed through unchanged.
+  workloadMin: string | null
+  workloadMax: string | null
   permanent: boolean | null
   onlineSince: string | null
   publicationStart: string | null

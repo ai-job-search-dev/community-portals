@@ -12,7 +12,8 @@ const SEARCH_HIT = {
     jobContent: {
       externalUrl: "https://www.jobup.ch/en/jobs/detail/123456/",
       location: { city: "Genève", cantonCode: "GE", postalCode: "1204" },
-      employment: { workloadPercentageMin: 80, workloadPercentageMax: 100, permanent: true },
+      // Strings, as the live API returns them (verified 11 November 2026).
+      employment: { workloadPercentageMin: "80", workloadPercentageMax: "100", permanent: true },
       company: { name: "Banque &amp; Compagnie SA" },
       jobDescriptions: [
         { languageIsoCode: "fr", title: "Ingénieur <em>sécurité</em>", description: "Description FR" },
@@ -46,8 +47,8 @@ describe("toSummary", () => {
     expect(summary.company).toBe("Banque & Compagnie SA");
     expect(summary.city).toBe("Genève");
     expect(summary.cantonCode).toBe("GE");
-    expect(summary.workloadMin).toBe(80);
-    expect(summary.workloadMax).toBe(100);
+    expect(summary.workloadMin).toBe("80");
+    expect(summary.workloadMax).toBe("100");
     expect(summary.permanent).toBe(true);
     expect(summary.onlineSince).toBe("2026-10-14");
     expect(summary.languageIsoCode).toBe("fr");
@@ -120,5 +121,14 @@ describe("decodeHtmlEntities, through stripHighlight", () => {
 
   test("decodes non-breaking spaces to plain spaces", () => {
     expect(stripHighlight("Genève&nbsp;SA")).toBe("Genève SA");
+  });
+});
+
+describe("entity decoding does not reach Object.prototype", () => {
+  test("an inherited property name is left as literal text", () => {
+    // NAMED_ENTITIES[body] on a plain object spliced function source text in.
+    for (const name of ["constructor", "toString", "hasOwnProperty", "valueOf"]) {
+      expect(stripHighlight(`&${name};`)).toBe(`&${name};`);
+    }
   });
 });

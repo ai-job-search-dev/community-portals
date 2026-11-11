@@ -35,6 +35,8 @@ as `--help` does, because there is no operation to report an error about.
 
 Unknown flags, bare value-taking flags, unexpected positional arguments, and out-of-range values are
 rejected before any request is made — a silently dropped filter changes what the search returns.
+That includes `--page 0` and `--size 0`, which are refused rather than clamped to `1`, and a
+`--canton` value such as `,` that contains no canton code.
 
 Requests retry with exponential backoff and jitter on `429` and `5xx`, six attempts in total.
 A `Retry-After` header is honoured when present (capped at 30s), with the backoff schedule as the
@@ -60,8 +62,8 @@ bun run src/cli.ts search [flags]
 | `--canton` | string | — | Comma-separated canton codes, e.g. `GE,VD`. Romandie: `GE`, `VD`, `VS`, `NE`, `FR`, `JU` |
 | `--workload-min` | number | — | Minimum workload percentage (0-100). API default is `10` |
 | `--workload-max` | number | — | Maximum workload percentage (0-100). API default is `100` |
-| `--page` | number | `1` | Page number (1-indexed) |
-| `--size` / `--limit` / `-n` | number | `20` | Results per page |
+| `--page` | number | `1` | Page number (1-indexed). Must be at least `1` |
+| `--size` / `--limit` / `-n` | number | `20` | Results per page. Must be at least `1` |
 | `--sort` | string | `date_desc` | `date_desc` or `date_asc`. `relevance` is rejected by the API with a `400` and is refused locally |
 | `--format` | string | `json` | `json`, `table`, or `plain` |
 
