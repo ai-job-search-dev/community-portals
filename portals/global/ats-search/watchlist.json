@@ -1,0 +1,681 @@
+[
+  {
+    "company": "GitLab",
+    "provider": "greenhouse",
+    "slug": "gitlab",
+    "every_run": true,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "remote"
+    ]
+  },
+  {
+    "company": "Grafana Labs",
+    "provider": "greenhouse",
+    "slug": "grafanalabs",
+    "every_run": true,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "react",
+      "typescript",
+      "full stack"
+    ]
+  },
+  {
+    "company": "Meesho",
+    "provider": "lever",
+    "slug": "meesho",
+    "every_run": true,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "software",
+      "ai"
+    ]
+  },
+  {
+    "company": "Mozilla",
+    "provider": "greenhouse",
+    "slug": "mozilla",
+    "every_run": true,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "web",
+      "javascript",
+      "typescript"
+    ]
+  },
+  {
+    "company": "PostHog",
+    "provider": "ashby",
+    "slug": "posthog",
+    "every_run": true,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "typescript",
+      "remote"
+    ]
+  },
+  {
+    "company": "Stripe",
+    "provider": "greenhouse",
+    "slug": "stripe",
+    "every_run": true,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Anaplan",
+    "provider": "greenhouse",
+    "slug": "anaplan",
+    "every_run": true,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "python",
+      "typescript"
+    ]
+  },
+  {
+    "company": "dunnhumby",
+    "provider": "greenhouse",
+    "slug": "dunnhumby",
+    "every_run": true,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "typescript",
+      "ai"
+    ]
+  },
+  {
+    "company": "Springboard",
+    "provider": "greenhouse",
+    "slug": "springboardmentors",
+    "every_run": true,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "python",
+      "remote"
+    ]
+  },
+  {
+    "company": "Adaptive",
+    "provider": "ashby",
+    "slug": "adaptive",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "full stack",
+      "software",
+      "staff",
+      "backend"
+    ]
+  },
+  {
+    "company": "Atlan",
+    "provider": "ashby",
+    "slug": "atlan",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "react",
+      "data"
+    ]
+  },
+  {
+    "company": "Buildkite",
+    "provider": "greenhouse",
+    "slug": "buildkite",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "devx",
+      "agents",
+      "full stack",
+      "remote"
+    ]
+  },
+  {
+    "company": "Canonical",
+    "provider": "greenhouse",
+    "slug": "canonical",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "web",
+      "remote"
+    ]
+  },
+  {
+    "company": "Cloudbeds",
+    "provider": "greenhouse",
+    "slug": "cloudbeds",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "react",
+      "typescript",
+      "full stack"
+    ]
+  },
+  {
+    "company": "Cloudflare",
+    "provider": "greenhouse",
+    "slug": "cloudflare",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "typescript",
+      "remote"
+    ]
+  },
+  {
+    "company": "CRED",
+    "provider": "lever",
+    "slug": "cred",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "typescript",
+      "ui"
+    ]
+  },
+  {
+    "company": "DataDog",
+    "provider": "greenhouse",
+    "slug": "datadog",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "react",
+      "typescript",
+      "full stack",
+      "ui"
+    ]
+  },
+  {
+    "company": "DuckDuckGo",
+    "provider": "ashby",
+    "slug": "duck-duck-go",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "typescript",
+      "software",
+      "privacy"
+    ]
+  },
+  {
+    "company": "Elastic",
+    "provider": "greenhouse",
+    "slug": "elastic",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "react",
+      "typescript",
+      "search",
+      "ai"
+    ]
+  },
+  {
+    "company": "Footprint",
+    "provider": "ashby",
+    "slug": "footprint",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "technical staff",
+      "forward deployed"
+    ]
+  },
+  {
+    "company": "Ghost",
+    "provider": "greenhouse",
+    "slug": "ghost",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "node",
+      "javascript",
+      "full stack"
+    ]
+  },
+  {
+    "company": "Groww",
+    "provider": "greenhouse",
+    "slug": "groww",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "H1",
+    "provider": "lever",
+    "slug": "h1",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "product",
+      "frontend",
+      "full stack",
+      "software",
+      "search",
+      "remote"
+    ]
+  },
+  {
+    "company": "Help Scout",
+    "provider": "ashby",
+    "slug": "helpscout",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Juicebox",
+    "provider": "ashby",
+    "slug": "juicebox",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "software",
+      "product",
+      "full stack",
+      "lead"
+    ]
+  },
+  {
+    "company": "Kastle",
+    "provider": "ashby",
+    "slug": "kastle",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "staff",
+      "ai",
+      "product",
+      "agent"
+    ]
+  },
+  {
+    "company": "LangChain",
+    "provider": "ashby",
+    "slug": "langchain",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "ai",
+      "full stack",
+      "typescript",
+      "langgraph"
+    ]
+  },
+  {
+    "company": "Lightfield",
+    "provider": "ashby",
+    "slug": "lightfield",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "staff",
+      "full stack",
+      "applied ai",
+      "infrastructure"
+    ]
+  },
+  {
+    "company": "Linear",
+    "provider": "ashby",
+    "slug": "linear",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Luminary",
+    "provider": "ashby",
+    "slug": "luminary",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "fullstack",
+      "ai",
+      "product",
+      "remote"
+    ]
+  },
+  {
+    "company": "Mattermost",
+    "provider": "greenhouse",
+    "slug": "mattermost",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "typescript",
+      "remote"
+    ]
+  },
+  {
+    "company": "MongoDB",
+    "provider": "greenhouse",
+    "slug": "mongodb",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "typescript",
+      "node"
+    ]
+  },
+  {
+    "company": "Moniepoint",
+    "provider": "greenhouse",
+    "slug": "moniepoint",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "full stack",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Netlify",
+    "provider": "greenhouse",
+    "slug": "netlify",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "typescript",
+      "web",
+      "react",
+      "platform"
+    ]
+  },
+  {
+    "company": "Notion",
+    "provider": "ashby",
+    "slug": "notion",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "product"
+    ]
+  },
+  {
+    "company": "PagerDuty",
+    "provider": "greenhouse",
+    "slug": "pagerduty",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Palantir",
+    "provider": "lever",
+    "slug": "palantir",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "software",
+      "full stack",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Raindrop",
+    "provider": "ashby",
+    "slug": "raindrop",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "product",
+      "frontend",
+      "devx",
+      "ai"
+    ]
+  },
+  {
+    "company": "Remote",
+    "provider": "greenhouse",
+    "slug": "remotecom",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "react",
+      "typescript",
+      "javascript"
+    ]
+  },
+  {
+    "company": "Resend",
+    "provider": "ashby",
+    "slug": "resend",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Rogo",
+    "provider": "ashby",
+    "slug": "rogo",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "software",
+      "frontend",
+      "full stack",
+      "ai",
+      "agents"
+    ]
+  },
+  {
+    "company": "Sentry",
+    "provider": "ashby",
+    "slug": "sentry",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Sourcegraph",
+    "provider": "greenhouse",
+    "slug": "sourcegraph91",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "typescript",
+      "ai",
+      "full stack",
+      "agentic"
+    ]
+  },
+  {
+    "company": "Spotify",
+    "provider": "lever",
+    "slug": "spotify",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "web",
+      "react",
+      "typescript"
+    ]
+  },
+  {
+    "company": "Supabase",
+    "provider": "ashby",
+    "slug": "supabase",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "typescript",
+      "remote"
+    ]
+  },
+  {
+    "company": "Superside",
+    "provider": "lever",
+    "slug": "superside",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "react",
+      "web",
+      "full stack"
+    ]
+  },
+  {
+    "company": "Vercel",
+    "provider": "greenhouse",
+    "slug": "vercel",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "react",
+      "next.js",
+      "typescript",
+      "ai"
+    ]
+  },
+  {
+    "company": "Zapier",
+    "provider": "ashby",
+    "slug": "zapier",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "frontend",
+      "full stack",
+      "python",
+      "ai",
+      "workflows"
+    ]
+  },
+  {
+    "company": "Zero",
+    "provider": "ashby",
+    "slug": "zero",
+    "every_run": false,
+    "keywords": [
+      "engineer",
+      "principal",
+      "ai",
+      "research",
+      "remote"
+    ]
+  },
+  {
+    "company": "Confluent",
+    "provider": "ashby",
+    "slug": "confluent",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "typescript",
+      "remote",
+      "india"
+    ]
+  },
+  {
+    "company": "Abnormal Security",
+    "provider": "greenhouse",
+    "slug": "abnormalsecurity",
+    "every_run": false,
+    "keywords": [
+      "frontend",
+      "engineer",
+      "full stack",
+      "react",
+      "typescript",
+      "india"
+    ]
+  }
+]
