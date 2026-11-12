@@ -9,7 +9,9 @@ const SEARCH_HIT = {
     status: "PUBLISHED_PUBLIC",
     sourceSystem: "API",
     publication: { startDate: "2026-10-14", endDate: "2026-11-14" },
-    jobContent: {
+    reportingObligation: true,
+  reportingObligationEndDate: "2026-11-10",
+  jobContent: {
       externalUrl: "https://www.jobup.ch/en/jobs/detail/123456/",
       location: { city: "Genève", cantonCode: "GE", postalCode: "1204" },
       // Strings, as the live API returns them (verified 11 November 2026).
@@ -63,6 +65,20 @@ describe("toSummary", () => {
     const summary = toSummary(SEARCH_HIT, ["it"]);
 
     expect(summary.languageIsoCode).toBe("fr");
+  });
+
+  test("surfaces the job registration requirement fields", () => {
+    const summary = toSummary(SEARCH_HIT);
+
+    expect(summary.reportingObligation).toBe(true);
+    expect(summary.reportingObligationEndDate).toBe("2026-11-10");
+  });
+
+  test("reports an absent registration flag as null rather than false", () => {
+    const summary = toSummary({ jobAdvertisement: { id: "bare" } });
+
+    expect(summary.reportingObligation).toBeNull();
+    expect(summary.reportingObligationEndDate).toBeNull();
   });
 
   test("records the syndication source so aggregated results can be deduped", () => {

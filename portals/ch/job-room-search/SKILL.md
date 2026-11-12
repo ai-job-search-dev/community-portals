@@ -24,26 +24,44 @@ unauthenticated JSON API, and **zero runtime dependencies** — it runs with jus
 > This mirrors the repo's `linkedin-search` skill pattern, adapted to job-room.ch's
 > JSON POST-search API instead of scraped HTML.
 
-## Why this portal deserves priority in a Swiss job search
+## Why this portal is worth running in a Swiss job search
 
-job-room.ch is the SECO / public employment service platform, and Swiss law gives it a
-structural advantage no commercial board has. Under the **job registration requirement**
-(Stellenmeldepflicht / obligation d'annonce), an employer filling a vacancy in a covered
-occupation must report it here and **may not advertise it anywhere else for five working
-days**. That window is exclusive to jobseekers registered with the RAV/ORP.
-
-For a RAV-registered user this is a real head start: covered roles appear here *before*
-jobup.ch, LinkedIn or the employer's own careers page, and applying inside the window means
-a much smaller applicant pool. The covered-occupation list is revised annually, published in
-the fourth quarter and valid from 1 January to 31 December. The 2026 list added occupations
-such as cooks and cleaning staff, taking coverage from 6.5% of the workforce in 2025 to 10.8%
-in 2026 — figures and dates per SECO/arbeit.swiss,
+job-room.ch is the SECO / public employment service platform. Under the **job registration
+requirement** (Stellenmeldepflicht / obligation d'annonce), an employer filling a vacancy in a
+covered occupation must report it here and may not advertise it anywhere else for five working
+days; that window is exclusive to jobseekers registered with the RAV/ORP. The covered-occupation
+list is revised annually, published in the fourth quarter and valid from 1 January to 31
+December. The 2026 list added occupations such as cooks and cleaning staff, taking coverage from
+6.5% of the workforce in 2025 to 10.8% in 2026 — figures and dates per SECO/arbeit.swiss,
 [Job registration requirement from 2026](https://www.secoalv.admin.ch/secoalv/en/home/menue/unternehmen/stellenmeldepflicht/stellenmeldepflicht-ab-2026.html)
 (checked 11 November 2026).
 
-Practical consequence: in a Swiss fork, run this portal **first**, and search all relevant
-cantons in one call rather than just the home canton, e.g. all of Romandie with
-`--canton GE,VD,VS,NE,FR,JU`.
+### This CLI does not see inside that window — measured, not assumed
+
+An earlier version of this file claimed the exclusivity window as a head start available
+through this skill. **That was wrong**, and the API says so plainly. Probed anonymously on
+12 November 2026:
+
+- 500 consecutive ads: every one `status: PUBLISHED_PUBLIC`, and **zero** with
+  `reportingObligation: true`.
+- A `cuisinier` search (cooks became a covered occupation in 2026): 15 of 100 ads carried
+  `reportingObligation: true`, and **every one had `reportingObligationEndDate` already in the
+  past** — 1 to 3 days before the probe date. The newest had closed the previous day.
+
+So registration-obligation ads reach the unauthenticated API **after** their RAV-only window
+closes, not during it. The five-day head start is real, but it belongs to a logged-in RAV/ORP
+jobseeker on the website; an anonymous client, this CLI included, cannot act on it. Do not
+tell a user otherwise.
+
+What the CLI *can* do with it: `reportingObligation` and `reportingObligationEndDate` are
+surfaced on every result, so a recently closed window is visible as a freshness signal — an
+obligation ad whose window ended yesterday has only just become open to everyone.
+
+Practical consequence: it is still worth running — it carries public-sector and RAV-channel
+postings that commercial boards do not, and it is free and unauthenticated — but run it
+*alongside* jobup.ch and LinkedIn rather than ahead of them in the expectation of exclusivity.
+Search all relevant cantons in one call rather than just the home canton, e.g. all of Romandie
+with `--canton GE,VD,VS,NE,FR,JU`.
 
 ### Three API gotchas worth knowing
 
@@ -51,11 +69,11 @@ cantons in one call rather than just the home canton, e.g. all of Romandie with
    and feeding that back returns
    `{"error":"Could not parse a job-room UUID from \"e75c4b4a\"","code":"BAD_ID"}`.
    Use `--format json` to get the full `id` before any `detail` call.
-2. **No explicit job-registration flag exists in the API.** The closest usable signal is
-   **`externalUrl`**: when present, the posting is already syndicated publicly (commonly from
-   jobup.ch), so it is *not* exclusive. A result with **no `externalUrl`** and a recent
-   `publicationStart` is plausibly still inside the exclusive window. This is a heuristic —
-   report it as plausible, never as confirmed.
+2. **The job-registration flag does exist** — an earlier version of this file said it did not.
+   `reportingObligation` (boolean) and `reportingObligationEndDate` are on every ad and are
+   surfaced by this CLI. What they do *not* give you is an in-window posting: see the measured
+   section above. `externalUrl` remains a useful companion signal — when present, the posting is
+   also syndicated publicly (commonly from jobup.ch), so the same role is discoverable elsewhere.
 3. **Keyword relevance is loose, and multi-word queries degrade badly.** A query like
    `"sécurité information"` returns largely unrelated postings (the API appears to match
    terms loosely), while a single compound term like `"cybersécurité"` returns relevant ones.
@@ -83,6 +101,17 @@ text you are reading, not to infer the employer's working language.
 ```bash
 bun run .agents/skills/job-room-search/cli/src/cli.ts search [flags]
 ```
+
+Query syntax: double quotes are **ignored** — `--query '"chef de projet"'` and
+`--query 'chef de projet'` both return 565 matches, so there is no phrase search and word order
+still shifts the count (`'projet chef'` returns 537). Words inside one query are **ANDed**
+(`'informaticien cuisinier'` returns 0). `OR`, `AND` and a leading `-` are **not operators** —
+they are matched as literal words, so `'informaticien OR cuisinier'` returns 0 rather than the
+union. `*` **is** a wildcard (`'informatici*'` returns 137 against `'informaticien'` 68).
+Matching is case-insensitive. The API itself ORs multiple entries in its `keywords` array
+(`["informaticien","cuisinier"]` returns 245 = 68 + 177 exactly), but `--query` sends a single
+entry, so run several short searches instead of one long one. All counts probed live on
+12 November 2026.
 
 Key flags:
 - `--query <text>` / `-q <text>` — keyword search (title, skill, role). Optional but recommended.
@@ -153,6 +182,32 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
   Adverts"*, so the operator's intent is broader than the path it disallows. The path rules
   permit this; the comment asks for restraint. Hence personal-use scope, low volume, and
   `enabled: false` by default. This reading is the contributor's, not a ruling from SECO.
+- **Terms of use on automated reads — checked in a real browser, 12 November 2026.**
+  job-room.ch has **no terms-of-use page of its own**: `/nutzungsbedingungen`,
+  `/conditions-utilisation`, `/terms-of-use` and `/legal` all redirect to the home page, and the
+  site's only legal link points to SECO's
+  [Legal information](https://www.arbeit.swiss/en/legal-information) on arbeit.swiss. (Those
+  routes return HTTP 200 with an empty Angular shell to any non-browser client, so a plain
+  `curl` cannot tell a real page from a missing one — this was read with a rendered browser.)
+
+  That SECO page **says nothing at all about automated access, scraping, crawling, bots or
+  APIs**. What it does say, verbatim, is about reuse, and it names job ads explicitly:
+
+  > "Downloading or copying texts, job advertisements, illustrations, photos or other files does
+  > not entail any transfer of rights with regard to the content thereof." … "Elements may be
+  > reproduced only with the prior written consent of the copyright holders." … "The copying
+  > and/or modification of the design for public or commercial purposes is likewise forbidden."
+
+  Note the ambiguity rather than resolving it in our own favour: the same page states that it
+  "pertains exclusively to the content accessible at www.work.swiss", yet job-room.ch links it
+  as its legal information and the page's own "Supported browsers" section names
+  `www.job-room.ch`. So whether it governs this API is genuinely unclear.
+
+  Practical reading: **reading** postings for your own job search is not what the copyright
+  clause restricts; **reproducing or redistributing** them is, and that needs prior written
+  consent. There is no clause granting automated access either, so treat the silence as absence
+  of permission rather than permission. That, with the robots.txt comment above, is why this
+  skill ships personal-use scope and `enabled: false`. Commercial or bulk use: ask SECO first.
 - Many listings **syndicate from other Swiss job boards** (most commonly jobup.ch, or
   direct employer career pages) — see `jobContent.externalUrl` in `detail` output. The
   same role may be independently discoverable on the origin site; dedupe on

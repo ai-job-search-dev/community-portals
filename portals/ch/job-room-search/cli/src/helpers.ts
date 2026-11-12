@@ -65,8 +65,11 @@ async function requestWithRetry(
       }
       // A server that says how long to wait is obeyed; the backoff schedule is
       // the fallback. Capped so a hostile or mistaken header cannot hang the CLI.
+      // `||`, not `??`: Retry-After: 0 (or an HTTP date already in the past)
+      // parses to 0, and ?? kept it, firing all six requests in a few ms.
+      // A server asking for no delay still gets the backoff schedule.
       const retryAfter = parseRetryAfter(response.headers.get("Retry-After"))
-      const wait = retryAfter ?? delay + Math.floor(Math.random() * 500)
+      const wait = retryAfter || delay + Math.floor(Math.random() * 500)
       await new Promise((r) => setTimeout(r, wait))
       delay = Math.min(delay * 2, 8000)
       continue
@@ -126,6 +129,30 @@ export function stripHighlight(text: string | null | undefined): string | null {
   return decodeHtmlEntities(text.replace(/<\/?em>/gi, ""))
 }
 
+// Copied verbatim from portals/global/linkedin-search/cli/src/helpers.ts
+// (db82b72), so the six portals that strip hidden text share one definition.
+/**
+ * Characters a reader of the posting never sees but a model reading this
+ * output does: C0/C1 controls other than tab, newline and carriage return, the
+ * soft hyphen, bidi marks/embeddings/overrides/isolates, zero-width characters
+ * and invisible operators, the BOM, variation selectors, and Unicode tag
+ * characters (U+E0000-E007F), which can spell out a whole hidden instruction.
+ * Listing text is third-party data, and these arrive raw in a portal's JSON or
+ * markup as easily as through a numeric entity.
+ */
+const INVISIBLE_CHARS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F­؜᠎​-‏‪-‮⁠-⁯︀-️﻿\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu
+
+/** Strip INVISIBLE_CHARS from every string in a result, recursively: the CLI's output boundary. */
+export function stripInvisible<T>(value: T): T {
+  if (typeof value === "string") return value.replace(INVISIBLE_CHARS, "") as T
+  if (Array.isArray(value)) return value.map(stripInvisible) as T
+  if (value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripInvisible(v)])) as T
+  }
+  return value
+}
+
 export interface JobSummary {
   id: string
   title: string
@@ -144,6 +171,12 @@ export interface JobSummary {
   publicationEnd: string | null
   externalUrl: string | null
   languageIsoCode: string | null
+  // The job registration requirement (Stellenmeldepflicht), as the API reports
+  // it. An anonymous client only ever sees these ads after the exclusivity
+  // window has closed, so reportingObligationEndDate reads as "this was an
+  // obligation posting and its RAV-only window ended on this date".
+  reportingObligation: boolean | null
+  reportingObligationEndDate: string | null
 }
 
 export interface JobDetail extends JobSummary {
@@ -199,6 +232,9 @@ export function toSummary(hit: any, preferredLangs: string[] = ["fr", "de", "en"
     publicationEnd: publication.endDate ?? null,
     externalUrl: content.externalUrl ?? null,
     languageIsoCode: desc?.languageIsoCode ?? null,
+    reportingObligation:
+      typeof ad.reportingObligation === "boolean" ? ad.reportingObligation : null,
+    reportingObligationEndDate: ad.reportingObligationEndDate ?? null,
   }
 }
 

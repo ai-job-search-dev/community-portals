@@ -1,4 +1,4 @@
-import { DETAIL_URL, getJson, toDetail, writeError } from "../helpers.js"
+import { DETAIL_URL, getJson, stripInvisible, toDetail, writeError } from "../helpers.js"
 
 export interface DetailOpts {
   id: string
@@ -34,7 +34,7 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
       writeError(`job-room detail failed: HTTP ${res.status} — ${res.body.slice(0, 300)}`, "DETAIL_FAILED")
       return 1
     }
-    const job = toDetail(JSON.parse(res.body))
+    const job = stripInvisible(toDetail(JSON.parse(res.body)))
 
     if (opts.format === "plain") {
       // Optional lines are null, not "", so filtering them out leaves the

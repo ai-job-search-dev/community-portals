@@ -1,4 +1,4 @@
-import { SEARCH_URL, postJson, toSummary, writeError, type JobSummary } from "../helpers.js"
+import { SEARCH_URL, postJson, stripInvisible, toSummary, writeError, type JobSummary } from "../helpers.js"
 
 export interface SearchOpts {
   query?: string
@@ -61,7 +61,10 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
       return 1
     }
     const hits = JSON.parse(res.body) as unknown[]
-    const cards = hits.map((h) => toSummary(h))
+    // The output boundary: titles, company names and descriptions are
+    // third-party text, and invisible characters in them reach a model reading
+    // this output even though a human reader of the posting never sees them.
+    const cards = stripInvisible(hits.map((h) => toSummary(h)))
     const totalCount = res.headers.get("x-total-count")
 
     if (opts.format === "table") {

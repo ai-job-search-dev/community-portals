@@ -94,15 +94,24 @@ bun run src/cli.ts detail e75c4b4a-ff96-477c-908b-91fd6416fdfc --format plain
 Detail adds the full description, every available language version, the street address,
 work forms, start/end dates, and the apply channel.
 
+Every result, from both commands, also carries `reportingObligation` and
+`reportingObligationEndDate` — the job registration requirement as the API reports it. See the
+note below on why these never show an in-window posting.
+
 ---
 
 ## Notes
 
-- **The five-day head start.** Under the Swiss job registration requirement
-  (*Stellenmeldepflicht* / *obligation d'annonce*), an employer filling a vacancy in a
-  covered occupation must report it here and may not advertise it elsewhere for five
-  working days. For a jobseeker registered with the RAV/ORP, covered roles appear here
-  before they reach commercial boards. See `../SKILL.md` for the detail.
+- **The five-day window is not visible to this CLI.** Under the Swiss job registration
+  requirement (*Stellenmeldepflicht* / *obligation d'annonce*), a covered vacancy must be
+  reported here and may not be advertised elsewhere for five working days, exclusively to
+  RAV/ORP-registered jobseekers. That window is real but it belongs to a logged-in user on the
+  website: probed anonymously on 12 November 2026, every registration-obligation ad the API
+  returned had `reportingObligationEndDate` **already in the past**, and 500 consecutive ads
+  were all `PUBLISHED_PUBLIC` with none under obligation. So obligation ads reach this API after
+  their window closes, not during it. `reportingObligation` and `reportingObligationEndDate` are
+  surfaced on every result, which makes a just-closed window usable as a freshness signal.
+  `../SKILL.md` has the measurements.
 - **Syndicated listings.** Many postings arrive from commercial boards (jobup.ch among
   them) and carry a `jobContent.externalUrl`. The same role may appear on both, so dedupe
   by title + company when aggregating across portals.
@@ -126,11 +135,25 @@ endpoint answers `200` to this UA exactly as it does to a spoofed desktop-Chrome
 there is nothing to gain by disguising the client and an operator reading their logs can see
 what this is. The value is `UA` in `src/helpers.ts`.
 
-## robots.txt
+## robots.txt and terms
 
-`robots.txt` disallows `/job-search/` — the human-facing search UI, which this CLI does
-not touch. It says nothing about the `/jobadservice/` API path used here. See
-`../url-reference.md` for the findings in full.
+`robots.txt` (fetched 11 November 2026, HTTP 200) disallows `/job-search/` — the human-facing
+search UI, which this CLI does not touch — and `/aav/confirmation`. No rule names the
+`/jobadservice/` API path used here. But the file opens with:
+
+```
+# Do not crawl Job Adverts
+```
+
+so the operator's intent is broader than the path it disallows. The path rules permit this; the
+comment asks for restraint, which is why the skill ships personal-use scope and `enabled: false`.
+
+On terms: job-room.ch has no terms-of-use page of its own, and SECO's linked legal information
+says nothing about automated access — but its copyright clause does name job advertisements and
+requires "prior written consent" to reproduce them. Reading postings for your own job search is
+not what that restricts; redistributing them is. `../SKILL.md` has the quotes, the dates and the
+ambiguity over whether that page governs this API at all; `../url-reference.md` has the
+robots.txt findings in full.
 
 ---
 
@@ -154,4 +177,12 @@ bun test
 ```
 
 Tests are network-free: the CLI contract and flag-validation cases all fail before any
-request is made, and the parsing tests run against trimmed fixtures of real API responses.
+request is made, the parsing tests run against trimmed fixtures of real API responses, and the
+retry and hidden-text suites stub `fetch`.
+
+`tests/hidden-text.test.ts` is the one worth knowing about. Listing text is third-party data, so
+every result is passed through `stripInvisible` (copied from `linkedin-search`) at the output
+boundary, and that suite asserts no invisible character survives in **any** format — `json`,
+`table` and `plain` for `search`, `json` and `plain` for `detail` — including an "Ignore previous
+instructions" payload spelled in Unicode tag characters, which renders as nothing in a terminal
+but reaches a model reading the output. Remove the `stripInvisible` call and all six cases fail.

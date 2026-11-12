@@ -99,6 +99,14 @@ Key field paths used by the CLI:
 - Publication window: `jobAdvertisement.publication.{startDate,endDate}`
 - Posted date proxy: `jobAdvertisement.createdTime` (no separate "online since" field on the search hit — `createdTime` is what the CLI reports as `onlineSince`, truncated to the date).
 - Original source: `jobAdvertisement.jobContent.externalUrl`
+- Job registration requirement: `jobAdvertisement.{reportingObligation,reportingObligationEndDate,reportToAvam}`
+  — `reportingObligation` is a boolean, `reportingObligationEndDate` an ISO date. Both are
+  surfaced by the CLI. Probed anonymously 12 November 2026: of 500 consecutive ads, none had
+  `reportingObligation: true`; of 100 `cuisinier` ads (a covered occupation since 2026), 15 did
+  and **all 15 had an end date in the past**. The unauthenticated API therefore only exposes
+  obligation ads after their RAV-only window has closed.
+- Status: `jobAdvertisement.status` — every ad an anonymous client sees is `PUBLISHED_PUBLIC`
+  (500/500 sampled). No restricted status was ever returned without a login.
 
 `<em>...</em>` highlight tags wrap keyword matches inside `title`/`description` —
 strip them. Some free-text fields (titles, company names) are also HTML-entity-encoded
@@ -120,6 +128,28 @@ Verified live — returns **HTTP 200** with the raw `jobAdvertisement` object di
 (not wrapped in `{jobAdvertisement: {...}}` like the search hit envelope; the fields
 are otherwise identical). `<id>` is a UUID, e.g. `e75c4b4a-ff96-477c-908b-91fd6416fdfc`
 (not numeric like LinkedIn job IDs). A non-existent/invalid id returns 404.
+
+## Keyword / query semantics (probed live, 12 November 2026)
+
+`x-total-count` from `POST .../_search`, one term per probe:
+
+| Query | Matches | What it shows |
+|---|---|---|
+| `chef de projet` | 565 | baseline |
+| `"chef de projet"` (double-quoted) | 565 | **double quotes are ignored** — no phrase search |
+| `projet chef` | 537 | word order shifts the count, so it is not a plain set intersection |
+| `chef` / `projet` alone | 2385 / 4263 | multi-word is narrower than either word |
+| `informaticien cuisinier` | 0 | words in one string are **ANDed** |
+| `informaticien OR cuisinier` | 0 | `OR` is **not an operator** — matched as a literal word |
+| `informaticien AND cuisinier` | 0 | nor is `AND` |
+| `informaticien -cuisinier` | 0 | nor is a leading `-` |
+| `informatici*` | 137 | `*` **is** a wildcard (vs 68 for `informaticien`) |
+| `INFORMATICIEN` | 68 | matching is case-insensitive |
+| `keywords: ["informaticien","cuisinier"]` | 245 | array entries are **ORed** — 68 + 177 exactly |
+
+The last row is the useful one and the CLI does not expose it: `--query` sends a single array
+entry, so an OR across terms needs several calls. Practical guidance: prefer several short
+single-concept searches over one long query, and use `*` rather than a quoted phrase.
 
 ## Quirks / notes
 
