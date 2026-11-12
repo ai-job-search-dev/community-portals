@@ -46,11 +46,12 @@ export function table(rows: PortalResult[]): string {
 }
 
 /**
- * The note the JSON `meta.truncated` flag carries, for the human-facing formats
- * — a truncated search that prints like a complete one is the worst of the
- * board's quirks to hide.
+ * Human-facing notice for `meta.truncated`. JSON output passes the server's own
+ * `truncatedNote` through untouched; this text is written locally and is not
+ * that string, because a truncated search that prints like a complete one is
+ * the worst of the board's quirks to hide.
  */
-function truncationNote(response: SearchResponse): string {
+export function truncationNote(response: SearchResponse): string {
   if (!response.truncated) return ""
   const total = response.total === undefined ? "More roles" : `${response.total} roles`
   return `\n${total} match. Narrow with --jobage and --before to walk the rest.`

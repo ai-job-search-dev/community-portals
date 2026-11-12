@@ -74,16 +74,6 @@ function parseEventStream(body: string): unknown {
   return parseJson(data, "event data")
 }
 
-/**
- * Unwrap a JSON-RPC reply down to the tool's own JSON payload.
- *
- * The server reports failure in three different shapes, and all three have to
- * become a thrown error or the caller will treat them as a posting:
- *   1. a JSON-RPC `error` member (transport/protocol level);
- *   2. `result.isError` with a plain-text message (schema validation);
- *   3. a normal result whose JSON payload is `{ "error": "..." }`
- *      (business logic, e.g. an unknown slug).
- */
 function parseJson(raw: string, what: string): unknown {
   try {
     return JSON.parse(raw)
@@ -95,6 +85,16 @@ function parseJson(raw: string, what: string): unknown {
   }
 }
 
+/**
+ * Unwrap a JSON-RPC reply down to the tool's own JSON payload.
+ *
+ * The server reports failure in three different shapes, and all three have to
+ * become a thrown error or the caller will treat them as a posting:
+ *   1. a JSON-RPC `error` member (transport/protocol level);
+ *   2. `result.isError` with a plain-text message (schema validation);
+ *   3. a normal result whose JSON payload is `{ "error": "..." }`
+ *      (business logic, e.g. an unknown slug).
+ */
 export function parseMcpResponse(body: string, contentType = ""): unknown {
   const payload = contentType.includes("text/event-stream") ? parseEventStream(body) : parseJson(body, "response")
   const message = asRecord(payload)
