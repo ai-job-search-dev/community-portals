@@ -31,7 +31,10 @@ convention every shipped portal CLI in `ai-job-search` uses.
 live: `title`, `company`, `city`, `country`, `remote`, `workType`, `aiSkills`,
 `postingTextAvailable`, `posted`, `applyUrl`, `detailUrl`, `slug`, and
 `summary`. Only map a missing value to `null`; never infer it from another
-field.
+field. The single exception is `url`, which is `applyUrl` and falls back to
+`detailUrl` when the posting carries no apply link, so every result has
+somewhere to go. `detailUrl` is also reported on its own, so the two are always
+distinguishable.
 
 `workType` already restricts results to postings that state an arrangement, so
 the adapter does not also send `remote: true` — measured live, `workType` alone,
@@ -46,9 +49,12 @@ they are **kept**, not dropped: `title`, `company`, `city`, `country`, `posted`,
 and `applyUrl` are all present, which is everything `/scrape` needs to rank,
 deduplicate, and track a lead.
 
-Such a result has `id: null` and `detailUrl: null`, and `meta.withoutDetail`
-counts them so the gap between `meta.count` and `meta.total` is explained rather
-than silent. Call `detail` only on a result that has an `id`.
+Such a result has `id: null` and `detailUrl: null`. `meta.withoutDetail` counts
+how many of the **returned** rows are in that state, so a caller can tell at a
+glance how much of this page it cannot read in full. It does not account for the
+difference between `meta.count` and `meta.total`: `count` is the rows returned,
+no-detail rows included, while `total` is every match on the board, most of which
+simply fell outside `--limit`. Call `detail` only on a result that has an `id`.
 
 ## Error handling
 
@@ -66,9 +72,14 @@ back as a *successful* result. Returned as-is it would print an empty posting
 and exit `0`, which `/scrape` reads as a real job. The adapter raises it as an
 error with exit `1` instead.
 
-Errors are written to stderr as `{ "error": "…", "code": "…" }`. Codes:
-`BAD_ARGUMENT`, `MCP_TOOL_ERROR`, `MCP_HTTP_ERROR`, `MCP_NETWORK_ERROR`,
-`MCP_PROTOCOL_ERROR`, `INTERNAL_ERROR`.
+Errors are written to stderr as `{ "error": "…", "code": "…" }`. The codes the
+adapter generates are `BAD_ARGUMENT`, `MCP_TOOL_ERROR`, `MCP_HTTP_ERROR`,
+`MCP_NETWORK_ERROR`, `MCP_PROTOCOL_ERROR` and `INTERNAL_ERROR`.
+
+That list is not closed. A JSON-RPC `error` member is reported with the server's
+own `code` verbatim, falling back to `MCP_ERROR` when it carries none, so a
+caller may see a value from the server that is not named above. Match on the
+adapter's codes and treat anything else as a transport-level failure.
 
 ### Date filters
 

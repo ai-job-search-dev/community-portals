@@ -28,8 +28,9 @@ SEARCH FLAGS
 EXAMPLES
   bun run src/cli.ts search -q "design tokens" --jobage 14 --format table
   bun run src/cli.ts search -l Germany --remote hybrid --limit 50
-  bun run src/cli.ts search --jobage 60 --before 2026-08-01 --format table
-  bun run src/cli.ts detail gitlab-senior-product-designer-ai-dtkb4g --format plain
+  bun run src/cli.ts search --jobage 30 --format table            # newest window
+  bun run src/cli.ts search --jobage 60 --before <oldest-date-seen> # the window before it
+  bun run src/cli.ts detail <slug-from-search> --format plain
 
 The board has no offset paging: narrow a truncated search with --jobage and --before.
 This is a read-only client for https://jobs.intodesignsystems.com/mcp. It never applies for a role.
@@ -59,6 +60,9 @@ function parseFlags(argv: string[]): Flags {
     const key = aliases[name] ?? name
     const value = argv[index + 1]
     if (!value || value.startsWith("-")) {
+      // Recorded as a bare flag. Only --help/-h may legitimately be bare; every
+      // other flag is checked below, so `--query` alone cannot quietly become an
+      // unfiltered search that still exits 0.
       flags[key] = true
     } else {
       flags[key] = value
@@ -87,11 +91,28 @@ function formatFlag(flags: Flags, tableAllowed: boolean): "json" | "table" | "pl
   return value as "json" | "table" | "plain"
 }
 
+const BARE_FLAGS = new Set(["help", "h"])
+
 function validateFlags(command: string, flags: Flags): void {
   const allowed = COMMAND_FLAGS[command]
   if (!allowed) return
   for (const key of Object.keys(flags)) {
-    if (key !== "_" && !allowed.has(key)) fail(`unknown flag --${key} for '${command}'`)
+    if (key === "_") continue
+    if (!allowed.has(key)) fail(`unknown flag --${key} for '${command}'`)
+    if (flags[key] === true && !BARE_FLAGS.has(key)) fail(`--${key} needs a value`)
+  }
+}
+
+/**
+ * Reject stray positionals. `search` takes none beyond the command and `detail`
+ * takes exactly one, so a typo cannot sit unread next to a command that then
+ * runs against something other than what was typed.
+ */
+function validatePositionals(command: string, flags: Flags): void {
+  const expected = command === "detail" ? 2 : 1
+  if (flags._.length > expected) {
+    const extra = flags._.slice(expected).map((value) => `'${value}'`).join(", ")
+    fail(`unexpected argument ${extra} for '${command}'`)
   }
 }
 
@@ -141,12 +162,16 @@ function detailOpts(flags: Flags): DetailOpts {
 async function main(): Promise<number> {
   const flags = parseFlags(process.argv.slice(2))
   const command = flags._[0]
-  if (!command || flags.help || flags.h) {
+  const helpRequested = Boolean(flags.help || flags.h)
+  if (!command || helpRequested) {
     process.stdout.write(HELP)
-    return command ? 0 : 1
+    // Asking for help succeeded; only a bare invocation with no command at all
+    // is a usage error.
+    return helpRequested || command ? 0 : 1
   }
   try {
     validateFlags(command, flags)
+    validatePositionals(command, flags)
     if (command === "search") await runSearch(searchOpts(flags))
     else if (command === "detail") await runDetail(detailOpts(flags))
     else fail(`unknown command '${command}'`)

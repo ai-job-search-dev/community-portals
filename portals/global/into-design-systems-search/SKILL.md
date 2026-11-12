@@ -45,8 +45,8 @@ bun run .agents/skills/into-design-systems-search/cli/src/cli.ts detail \
 Query syntax: one case-insensitive substring matched against title, company and
 summary. Phrase quoting is not honoured — quote characters are matched literally.
 No boolean operators, no negation, no wildcards, and no word-boundary matching, so
-a multi-word query matches only as one contiguous run and word order matters:
-`design tokens` returns 48 roles, `tokens design` returns none. Send one phrase in
+a multi-word query matches only as one contiguous run and word order matters —
+`design tokens` matches postings that `tokens design` cannot. Send one phrase in
 the order a posting would write it, and use separate searches instead of `OR`.
 
 ## Access and terms
@@ -62,18 +62,31 @@ post them; use them accordingly.
 
 ```bash
 # Recent design-token and systems work, scanned quickly.
-… search -q "design tokens" --jobage 14 --format table
+bun run .agents/skills/into-design-systems-search/cli/src/cli.ts search -q "design tokens" --jobage 14 --format table
 
 # One market, one work arrangement.
-… search --country Germany --remote hybrid --limit 50
+bun run .agents/skills/into-design-systems-search/cli/src/cli.ts search --country Germany --remote hybrid --limit 50
 
 # Remote-only senior roles across the whole board.
-… search -q staff --remote remote --format table
+bun run .agents/skills/into-design-systems-search/cli/src/cli.ts search -q staff --remote remote --format table
 
-# Walk past the 100-result cap: newest window first, then older windows.
-… search --jobage 30 --format json
-… search --jobage 60 --before 2026-08-01 --format json
+# Read one posting. Slugs come from search and expire with the listing.
+bun run .agents/skills/into-design-systems-search/cli/src/cli.ts detail <slug-from-search> --format plain
 ```
+
+Walking past the 100-result cap takes consecutive, touching windows. Each
+`--before` is the **oldest `date` the previous window returned**, so nothing
+falls between them; a round number picked by hand usually leaves a gap:
+
+```bash
+# 1. Newest window. Say its oldest result is dated 2026-10-02.
+bun run .agents/skills/into-design-systems-search/cli/src/cli.ts search --jobage 30 --format json
+
+# 2. Next window starts exactly where that one ended.
+bun run .agents/skills/into-design-systems-search/cli/src/cli.ts search --jobage 60 --before 2026-10-02 --format json
+```
+
+Repeat until a window comes back with `"truncated": false`.
 
 ## Flags
 
@@ -85,14 +98,16 @@ post them; use them accordingly.
 | `--jobage <days>` | Posted within N whole days (lower bound). |
 | `--before <YYYY-MM-DD>` | Posted before this day, exclusive (upper bound). |
 | `--limit`, `-n` | 1–100, default 20. |
-| `--format` | `json` (default), `table`, `plain`. |
+| `--format` | `search`: `json` (default), `table`, `plain`. `detail`: `json` (default), `plain` — `table` is rejected. |
 
 **There is no `--page`.** The board has no offset paging, so `meta.page` is
 always `1`. A search that returns `"truncated": true` is narrowed by pairing
 `--jobage` with `--before` and walking backwards in date windows until each
 window comes back untruncated.
 
-A missing work type means the posting does not state one; it is never onsite.
+A missing work type means the posting says nothing about the arrangement. That
+is unknown, not a finding: never record such a role as onsite, and never drop it
+from results for lacking the field. Report it as unstated.
 
 ## Output
 

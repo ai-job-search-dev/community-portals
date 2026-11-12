@@ -30,6 +30,21 @@ export class AdapterError extends Error {
 const MAX_RETRIES = 3
 const INITIAL_RETRY_DELAY_MS = 500
 const REQUEST_TIMEOUT_MS = 20_000
+const MAX_RETRY_AFTER_MS = 30_000
+
+/**
+ * `Retry-After` in milliseconds, as seconds or an HTTP date, or null when the
+ * header is absent or unusable. Capped, so a hostile or mistaken value cannot
+ * park the CLI inside a `/scrape` run.
+ */
+export function retryAfterMs(header: string | null, now = Date.now()): number | null {
+  if (!header) return null
+  const trimmed = header.trim()
+  const seconds = Number(trimmed)
+  const ms = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(trimmed) - now
+  if (!Number.isFinite(ms) || ms <= 0) return null
+  return Math.min(ms, MAX_RETRY_AFTER_MS)
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -56,7 +71,7 @@ function parseEventStream(body: string): unknown {
     .filter(Boolean)
     .at(-1)
   if (!data) throw new AdapterError("MCP response contained no data event", "MCP_PROTOCOL_ERROR")
-  return JSON.parse(data)
+  return parseJson(data, "event data")
 }
 
 /**
@@ -69,8 +84,19 @@ function parseEventStream(body: string): unknown {
  *   3. a normal result whose JSON payload is `{ "error": "..." }`
  *      (business logic, e.g. an unknown slug).
  */
+function parseJson(raw: string, what: string): unknown {
+  try {
+    return JSON.parse(raw)
+  } catch (error) {
+    // A 200 that is not JSON is a protocol failure, not an internal one: say so
+    // with the documented code instead of leaking a raw SyntaxError.
+    const detail = error instanceof Error ? error.message : String(error)
+    throw new AdapterError(`MCP ${what} was not JSON (${detail})`, "MCP_PROTOCOL_ERROR")
+  }
+}
+
 export function parseMcpResponse(body: string, contentType = ""): unknown {
-  const payload = contentType.includes("text/event-stream") ? parseEventStream(body) : JSON.parse(body)
+  const payload = contentType.includes("text/event-stream") ? parseEventStream(body) : parseJson(body, "response")
   const message = asRecord(payload)
 
   if (message.error) {
@@ -88,7 +114,7 @@ export function parseMcpResponse(body: string, contentType = ""): unknown {
   // verbatim instead of letting JSON.parse turn it into a syntax error.
   if (result.isError === true) throw new AdapterError(raw, "MCP_TOOL_ERROR")
 
-  const parsed = JSON.parse(raw)
+  const parsed = parseJson(raw, "tool payload")
   const toolError = asString(asRecord(parsed).error)
   if (toolError) throw new AdapterError(toolError, "MCP_TOOL_ERROR")
   return parsed
@@ -128,8 +154,11 @@ export async function callTool<T>(name: string, args: Record<string, unknown> = 
         throw new AdapterError(`MCP HTTP ${response.status}: ${response.statusText}`, "MCP_HTTP_ERROR")
       }
       // Exponential backoff with jitter, so retries from parallel portal calls
-      // do not land on the board at the same instant.
-      await sleep(delay * (0.5 + Math.random() / 2))
+      // do not land on the board at the same instant. A Retry-After the board
+      // sends wins over the computed delay: retrying sooner than asked would
+      // just spend the remaining attempts inside the same rate-limit window.
+      const asked = retryAfterMs(response.headers.get("retry-after"))
+      await sleep(asked ?? delay * (0.5 + Math.random() / 2))
       delay *= 2
       continue
     }

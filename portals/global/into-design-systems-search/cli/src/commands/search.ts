@@ -18,21 +18,42 @@ interface SearchResponse {
   jobs?: unknown[]
 }
 
+const NO_DETAIL = "(no detail page)"
+
+// `id` is the slug a reader copies straight into `detail`, so its column is
+// sized to the widest value rather than cut to a fixed width. The rest are
+// prose and may be elided.
 const COLUMNS = [
-  { header: "ID", width: 32, value: (row: PortalResult) => row.id ?? "(no detail page)" },
-  { header: "TITLE", width: 42, value: (row: PortalResult) => row.title },
-  { header: "COMPANY", width: 24, value: (row: PortalResult) => row.company },
-  { header: "LOCATION", width: 28, value: (row: PortalResult) => row.location },
-  { header: "DATE", width: 10, value: (row: PortalResult) => row.date },
+  { header: "ID", width: 32, clip: false, value: (row: PortalResult) => row.id ?? NO_DETAIL },
+  { header: "TITLE", width: 42, clip: true, value: (row: PortalResult) => row.title },
+  { header: "COMPANY", width: 24, clip: true, value: (row: PortalResult) => row.company },
+  { header: "LOCATION", width: 28, clip: true, value: (row: PortalResult) => row.location },
+  { header: "DATE", width: 10, clip: true, value: (row: PortalResult) => row.date },
 ]
 
-function table(rows: PortalResult[]): string {
+export function table(rows: PortalResult[]): string {
   if (!rows.length) return "No results."
-  const header = COLUMNS.map((column) => column.header.padEnd(column.width)).join(" ")
-  const body = rows.map((row) =>
-    COLUMNS.map((column) => (column.value(row) ?? "—").slice(0, column.width).padEnd(column.width)).join(" "),
+  const widths = COLUMNS.map((column) =>
+    column.clip
+      ? column.width
+      : Math.max(column.header.length, ...rows.map((row) => (column.value(row) ?? "—").length)),
   )
+  const cell = (text: string, index: number) =>
+    (COLUMNS[index].clip ? text.slice(0, widths[index]) : text).padEnd(widths[index])
+  const header = COLUMNS.map((column, index) => cell(column.header, index)).join(" ")
+  const body = rows.map((row) => COLUMNS.map((column, index) => cell(column.value(row) ?? "—", index)).join(" "))
   return [header, "-".repeat(header.length), ...body].join("\n")
+}
+
+/**
+ * The note the JSON `meta.truncated` flag carries, for the human-facing formats
+ * — a truncated search that prints like a complete one is the worst of the
+ * board's quirks to hide.
+ */
+function truncationNote(response: SearchResponse): string {
+  if (!response.truncated) return ""
+  const total = response.total === undefined ? "More roles" : `${response.total} roles`
+  return `\n${total} match. Narrow with --jobage and --before to walk the rest.`
 }
 
 function plain(rows: PortalResult[]): string {
@@ -69,11 +90,11 @@ export async function runSearch(opts: SearchOpts): Promise<void> {
   const withoutDetail = results.filter((job) => !job.id).length
 
   if (opts.format === "table") {
-    process.stdout.write(table(results) + "\n")
+    process.stdout.write(table(results) + truncationNote(response) + "\n")
     return
   }
   if (opts.format === "plain") {
-    process.stdout.write(plain(results) + "\n")
+    process.stdout.write(plain(results) + truncationNote(response) + "\n")
     return
   }
 

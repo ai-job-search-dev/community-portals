@@ -51,3 +51,28 @@ test("rejects a work arrangement the board does not model", async () => {
   expect(result.code).toBe(1)
   expect(JSON.parse(result.stderr).code).toBe("BAD_ARGUMENT")
 })
+
+test("rejects a value-taking flag given no value", async () => {
+  // `--query` with nothing after it used to fall back to the default and run an
+  // unfiltered search that still exited 0.
+  const result = await run(["search", "--query", "--limit", "2"])
+  expect(result.code).toBe(1)
+  expect(JSON.parse(result.stderr).error).toContain("--query needs a value")
+})
+
+test("rejects a stray positional instead of quietly ignoring it", async () => {
+  const result = await run(["detail", "some-slug-here", "TYPO"])
+  expect(result.code).toBe(1)
+  expect(JSON.parse(result.stderr).error).toContain("TYPO")
+})
+
+test("treats an explicit help request as success", async () => {
+  const result = await run(["--help"])
+  expect(result.code).toBe(0)
+  expect(result.stdout).toContain("USAGE")
+})
+
+test("still reports a bare invocation with no command as a usage error", async () => {
+  const result = await run([])
+  expect(result.code).toBe(1)
+})

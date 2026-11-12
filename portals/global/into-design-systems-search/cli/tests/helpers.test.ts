@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { daysAgoIso, isCalendarDate, normalizeSearchJob, parseMcpResponse } from "../src/helpers.js"
+import { AdapterError, daysAgoIso, isCalendarDate, normalizeSearchJob, parseMcpResponse, retryAfterMs, type PortalResult } from "../src/helpers.js"
+import { table } from "../src/commands/search.js"
+
+const EMPTY: PortalResult = {
+  id: null, title: null, company: null, location: null, date: null, url: null,
+  detailUrl: null, workType: null, remote: null, aiSkills: null,
+  postingTextAvailable: null, summary: null,
+}
 
 function toolResult(text: string, isError = false): string {
   return JSON.stringify({ jsonrpc: "2.0", result: { content: [{ type: "text", text }], isError } })
@@ -71,10 +78,11 @@ describe("date guards", () => {
     expect(isCalendarDate("2024-02-29")).toBe(true)
   })
 
-  test("rejects dates the board would accept and silently mishandle", () => {
-    // The board compares these as strings, so "2026-13-45" sorts above every
-    // stored date and a postedBefore filter using it matches the whole board —
-    // a filter that looks applied but is not.
+  test("rejects dates before the round trip", () => {
+    // The board validates these itself and answers a bad one with a clear
+    // message, so this guard is not covering a server gap. It is here so a
+    // local typo costs no request and is reported as BAD_ARGUMENT rather than
+    // coming back as a server error.
     expect(isCalendarDate("2026-13-45")).toBe(false)
     expect(isCalendarDate("2026-02-30")).toBe(false)
     expect(isCalendarDate("2023-02-29")).toBe(false)
@@ -82,5 +90,42 @@ describe("date guards", () => {
     expect(isCalendarDate("2026-08-01T00:00:00Z")).toBe(false)
     expect(isCalendarDate("not-a-date")).toBe(false)
     expect(isCalendarDate("")).toBe(false)
+  })
+})
+
+describe("transport guards", () => {
+  test("reports a non-JSON 200 body as a protocol error, not an internal one", () => {
+    // writeError maps anything that is not an AdapterError to INTERNAL_ERROR,
+    // so a raw SyntaxError here would be reported as a bug in the adapter.
+    try {
+      parseMcpResponse("<html>502 Bad Gateway</html>")
+      throw new Error("expected a throw")
+    } catch (error) {
+      expect(error).toBeInstanceOf(AdapterError)
+      expect((error as AdapterError).code).toBe("MCP_PROTOCOL_ERROR")
+    }
+  })
+
+  test("honours Retry-After in seconds and as a date, and caps it", () => {
+    const now = Date.parse("2026-11-12T00:00:00Z")
+    expect(retryAfterMs("2", now)).toBe(2000)
+    expect(retryAfterMs(new Date(now + 5000).toUTCString(), now)).toBe(5000)
+    expect(retryAfterMs("99999", now)).toBe(30_000)
+    for (const bad of [null, "", "soon", "-5", "0"]) expect(retryAfterMs(bad, now)).toBeNull()
+  })
+})
+
+describe("table output", () => {
+  test("never clips an id, because detail takes it verbatim", () => {
+    const long = "surfshark-senior-design-systems-designer-incogni-1fzp78"
+    const rendered = table([
+      { ...EMPTY, id: long, title: "Role", company: "Co", location: "Vilnius", date: "2026-11-12" },
+    ])
+    expect(rendered).toContain(long)
+  })
+
+  test("labels a row that has no detail page", () => {
+    const rendered = table([{ ...EMPTY, id: null, title: "Role" }])
+    expect(rendered).toContain("(no detail page)")
   })
 })
