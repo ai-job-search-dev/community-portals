@@ -29,6 +29,13 @@ Query params (all optional; no params = the whole board, newest first):
 | `editorial` | Editorial flags | `has_public_salary` · `ukrainian_product` · `miltech` · `reservation` |
 | `page` | Pagination | 1-indexed, 15 results per page |
 
+`all_keywords` syntax, from result totals on 2026-11-12 (`full-text` / `basic-search`):
+
+- Every word is required: `python golang` 18 / 5, against `golang` alone 46 / 35.
+- Double or single quotes make an ordered phrase: `product owner` 250, `"product owner"` 150, `'product owner'` 150, `"owner product"` 21 (`basic-search` matches titles, where the words are mostly adjacent already: 41, 41, 41, 3).
+- `-word` excludes: `python -django` 937 = `python` 976 − `python django` 39. It combines with a phrase: `"product owner" -senior` 98 + `"product owner" senior` 52 = 150.
+- `OR` is not an operator: `python OR golang` 18 / 5, the same as `python golang`.
+
 Also on the filter form but not wired into the CLI: `exp_level` (`no_exp`, `1y` … `10y`), `english_level`, `company_type`, `any_of_keywords`, `exclude_keywords`, `show_stale`.
 
 There is **no posting-age parameter**; `--jobage` filters client-side on `datePosted`.

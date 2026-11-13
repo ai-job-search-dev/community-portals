@@ -71,6 +71,159 @@ test("detail output drops hidden markup and invisible characters from the descri
   }
 });
 
+test("the JSON-LD description fallback drops hidden markup", async () => {
+  const page = detailPage({
+    id: 900001,
+    title: "Engineer",
+    company: "Acme",
+    descriptionHtml: "",
+    postings: [ld({ id: 900001, title: "Engineer", description: "<p>Visible</p><div hidden>HIDDEN instructions</div>" })],
+  });
+  for (const format of ["json", "plain"] as const) {
+    const out = await capture(page, () => runDetail({ id: "900001", format }));
+    expect(out).toContain("Visible");
+    expect(out).not.toMatch(LEAKED);
+  }
+});
+
+// The fallback turns JSON-LD's \n breaks into <br>; a newline inside a tag must
+// not split the tag, or its hidden attribute goes unseen.
+test.each([
+  ["a newline before the hidden attribute", "<p>Visible</p><div\nhidden>HIDDEN 1</div>"],
+  ["a newline after the hidden attribute", "<p>Visible</p><div hidden\n>HIDDEN 2</div>"],
+  ["a CRLF inside the tag", "<p>Visible</p><span\r\nhidden>HIDDEN 3</span>"],
+  ["a newline inside a hiding style", '<p>Visible</p><div style="display:\nnone">HIDDEN 4</div>'],
+])("the JSON-LD description fallback drops hidden markup with %s", async (_name, description) => {
+  const page = detailPage({
+    id: 900001,
+    title: "Engineer",
+    company: "Acme",
+    descriptionHtml: "",
+    postings: [ld({ id: 900001, title: "Engineer", description })],
+  });
+  const out = await capture(page, () => runDetail({ id: "900001", format: "json" }));
+  expect(JSON.parse(out).description).toBe("Visible");
+});
+
+test("a description block that is all hidden does not fall back to the JSON-LD copy", async () => {
+  const page = detailPage({
+    id: 900001,
+    title: "Engineer",
+    company: "Acme",
+    descriptionHtml: "<div hidden>HIDDEN block</div>",
+    postings: [ld({ id: 900001, title: "Engineer", description: "HIDDEN block, repeated in JSON-LD" })],
+  });
+  for (const format of ["json", "plain"] as const) {
+    const out = await capture(page, () => runDetail({ id: "900001", format }));
+    expect(out).not.toMatch(LEAKED);
+  }
+});
+
+test("detail title and company fallbacks from JSON-LD drop hidden markup", async () => {
+  const page = detailPage({
+    id: 900001,
+    title: "",
+    company: "",
+    descriptionHtml: "<p>Body</p>",
+    postings: [
+      ld({ id: 900001, title: "Engineer<span hidden>HIDDEN title</span>", company: "Acme<span hidden>HIDDEN company</span>" }),
+    ],
+  });
+  for (const format of ["json", "plain"] as const) {
+    const out = await capture(page, () => runDetail({ id: "900001", format }));
+    expect(out).toContain("Engineer");
+    expect(out).toContain("Acme");
+    expect(out).not.toMatch(LEAKED);
+  }
+});
+
+test("search title and company fallbacks from JSON-LD drop hidden markup", async () => {
+  const page = searchPage(
+    [card({ id: "900001", title: "" })],
+    [ld({ id: 900001, title: "Engineer<span hidden>HIDDEN title</span>", company: "Acme<span hidden>HIDDEN company</span>" })],
+  );
+  const out = await capture(page, () => runSearch({ page: 1, format: "json" }));
+  expect(out).toContain("Engineer");
+  expect(out).toContain("Acme");
+  expect(out).not.toMatch(LEAKED);
+});
+
+test("a description block that never closes does not fall back to the JSON-LD copy", async () => {
+  const page = detailPage({
+    id: 900001,
+    title: "Engineer",
+    company: "Acme",
+    descriptionHtml: `<div hidden>HIDDEN block</div>${"<div>".repeat(10)}`,
+    postings: [ld({ id: 900001, title: "Engineer", description: "HIDDEN block, repeated in JSON-LD" })],
+  });
+  const out = await capture(page, () => runDetail({ id: "900001", format: "json" }));
+  expect(out).not.toMatch(LEAKED);
+  expect(JSON.parse(out).description).toBeNull();
+});
+
+test("a detail title or company that is all hidden does not fall back to the JSON-LD copy", async () => {
+  const page = detailPage({
+    id: 900001,
+    title: "<span hidden>HIDDEN title</span>",
+    company: "<span hidden>HIDDEN company</span>",
+    descriptionHtml: "<p>Body</p>",
+    postings: [ld({ id: 900001, title: "HIDDEN title, repeated in JSON-LD", company: "HIDDEN company, repeated in JSON-LD" })],
+  });
+  const out = await capture(page, () => runDetail({ id: "900001", format: "json" }));
+  expect(out).not.toMatch(LEAKED);
+  expect(JSON.parse(out).title).toBe("(untitled)");
+  expect(JSON.parse(out).company).toBeNull();
+});
+
+test("a search card title or company that is all hidden does not fall back to the JSON-LD copy", async () => {
+  const page = searchPage(
+    [
+      card({ id: "900001", title: "Engineer", company: "<span hidden>HIDDEN company</span>" }),
+      card({ id: "900002", title: "<span hidden>HIDDEN title</span>", company: "Acme" }),
+    ],
+    [
+      ld({ id: 900001, title: "Engineer", company: "HIDDEN company, repeated in JSON-LD" }),
+      ld({ id: 900002, title: "HIDDEN title, repeated in JSON-LD" }),
+    ],
+  );
+  const out = await capture(page, () => runSearch({ page: 1, format: "json" }));
+  expect(out).not.toMatch(LEAKED);
+  const results = JSON.parse(out).results;
+  expect(results.map((r: { id: string }) => r.id)).toEqual(["900001"]);
+  expect(results[0].company).toBeNull();
+});
+
+test("JSON-LD category, employment type and offices drop hidden markup", async () => {
+  const hide = (s: string) => `${s}<span hidden>HIDDEN ${s}</span>`;
+  const posting = {
+    ...ld({ id: 900001, title: "Engineer", category: hide("Fullstack"), employmentType: hide("FULL_TIME"), remote: false }),
+    jobLocation: { "@type": "Place", address: { addressCountry: "Україна", addressLocality: [hide("Львів")] } },
+  };
+  const detail = detailPage({ id: 900001, title: "Engineer", company: "Acme", descriptionHtml: "<p>Body</p>", postings: [posting] });
+  const search = searchPage([card({ id: "900001", title: "Engineer" })], [{ ...posting, employmentType: [hide("PART_TIME")] }]);
+  for (const [page, run, employment] of [
+    [detail, () => runDetail({ id: "900001", format: "json" }), "FULL_TIME"],
+    [search, () => runSearch({ page: 1, format: "json" }), "PART_TIME"],
+  ] as const) {
+    const out = await capture(page, run);
+    expect(out).toContain("Fullstack");
+    expect(out).toContain("Львів");
+    expect(out).toContain(`"employmentType": "${employment}"`);
+    expect(out).not.toMatch(LEAKED);
+  }
+});
+
+test("a close tag inside a quoted attribute is not a line break", async () => {
+  const page = detailPage({
+    id: 900001,
+    title: "Engineer",
+    company: "Acme",
+    descriptionHtml: '<p title="x </p> HIDDEN instructions">First</p><p>Second</p>',
+  });
+  const out = await capture(page, () => runDetail({ id: "900001", format: "json" }));
+  expect(JSON.parse(out).description).toBe("First\nSecond");
+});
+
 // Each of these once leaked hidden text, or swallowed visible text, in the
 // linkedin-search sanitiser this one is synced with.
 test.each([

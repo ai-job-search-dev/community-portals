@@ -133,6 +133,48 @@ describe("parseJobDetail", () => {
     expect(parseJobDetail(html, "900002", "u")!.description).toBe("Line one\n\nLine two");
   });
 
+  test("keeps plain-text line breaks in the JSON-LD description fallback", () => {
+    const html = detailPage({
+      id: 900002,
+      title: "Dev",
+      company: "Acme",
+      descriptionHtml: "",
+      // As on the live site: tag-free text, a raw &, \n line breaks.
+      postings: [ld({ id: 900002, title: "Dev", description: "About us\n \nC++ < 3 & Go\nYou have:" })],
+    });
+    expect(parseJobDetail(html, "900002", "u")!.description).toBe("About us\n\nC++ < 3 & Go\nYou have:");
+  });
+
+  test("falls back to the JSON-LD description when the page has no description block", () => {
+    const html = detailPage({
+      id: 900006,
+      title: "Dev",
+      company: "Acme",
+      descriptionHtml: "<p>Not in a description block</p>",
+      postings: [ld({ id: 900006, title: "Dev", description: "From JSON-LD" })],
+    }).replace("job-post__description", "");
+    expect(parseJobDetail(html, "900006", "u")!.description).toBe("From JSON-LD");
+  });
+
+  test("picks the posting with the requested id when it is not the first", () => {
+    const postings = JSON.stringify([ld({ id: 111111, title: "Other", company: "Other Co" }), ld({ id: 900005, title: "Dev", company: "Acme" })]);
+    const html = detailPage({ id: 900005, title: "", company: "", descriptionHtml: "<p>Body</p>", postings });
+    const job = parseJobDetail(html, "900005", "u")!;
+    expect(job.title).toBe("Dev");
+    expect(job.company).toBe("Acme");
+    expect(job.url).toBe("https://djinni.co/jobs/900005-test-role/");
+  });
+
+  test("a page whose JSON-LD holds only other postings is not this posting", () => {
+    const html = detailPage({ id: 111111, title: "Other Role", company: "Other", descriptionHtml: "<p>Other</p>" });
+    expect(parseJobDetail(html, "855979", "u")).toBeNull();
+  });
+
+  test("a page with a description block but no JSON-LD posting still parses", () => {
+    const html = detailPage({ id: 900004, title: "Dev", company: "Acme", descriptionHtml: "<p>Body</p>", postings: "[]" });
+    expect(parseJobDetail(html, "900004", "u")!.description).toBe("Body");
+  });
+
   test("a page with neither JSON-LD nor a description block is not a posting", () => {
     expect(parseJobDetail("<html><h1>Вакансії</h1></html>", "1", "u")).toBeNull();
   });

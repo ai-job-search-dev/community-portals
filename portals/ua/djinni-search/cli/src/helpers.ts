@@ -333,14 +333,29 @@ function clean(html: string): string {
   return decodeHtmlEntities(stripTags(html)).replace(/\s+/g, " ").trim()
 }
 
+const WHOLE_TAG = new RegExp(`<(/?)([a-zA-Z][a-zA-Z0-9-]*)${ATTRS}${TAG_END}`, "g")
+const BLOCK_TAG = /^(?:p|li|ul|ol|div|h\d)$/
+const TAG_OR_NEWLINE = new RegExp(`${WHOLE_TAG.source}|\\r?\\n`, "g")
+
+/**
+ * Turn text line breaks into <br>, leaving tags whole: a <br> inserted inside
+ * `<div\nhidden>` would split the tag and hide its `hidden` attribute.
+ */
+function newlinesToBreaks(text: string): string {
+  return text.replace(TAG_OR_NEWLINE, (m) => (m[0] === "<" ? m : "<br>"))
+}
+
 /** Render description HTML as text, keeping paragraph and line breaks as newlines. */
 function descriptionText(html: string): string | null {
   // Hidden markup goes before the line split: a hidden element can span the
   // breaks, and cleaning line by line would only see half of it.
+  // Whole tags are matched, so a `</p>` inside a quoted attribute value is not a break.
   const withBreaks = visibleHtml(html)
     .replace(/\s+/g, " ")
-    .replace(/<\s*br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|li|ul|ol|div|h\d)>/gi, "\n")
+    .replace(WHOLE_TAG, (tag, close: string, name: string) => {
+      const n = name.toLowerCase()
+      return n === "br" || (close && BLOCK_TAG.test(n)) ? "\n" : tag
+    })
   // Clean each rendered line separately: stripTags collapses whitespace,
   // so applying it to the whole description erased these boundaries.
   return withBreaks.split("\n").map(clean).join("\n").replace(/\n{3,}/g, "\n\n").trim() || null
@@ -385,6 +400,20 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.replace(/\s+/g, " ").trim() : null
 }
 
+/** JSON-LD text shown in place of the page's own markup: sanitised like that markup, since it can carry the same hidden elements. */
+function ldText(value: unknown): string | null {
+  return typeof value === "string" ? clean(value) || null : null
+}
+
+/**
+ * The page's own text, or the JSON-LD copy only when the page's markup is
+ * literally empty: markup that is all hidden renders as nothing, and Djinni's
+ * JSON-LD repeats the text as plain text, hidden part included.
+ */
+function pageOrLd(html: string | undefined, ldValue: unknown): string | null {
+  return html?.trim() ? clean(html) || null : ldText(ldValue)
+}
+
 /** "2026-10-30T14:43:11.372863" -> "2026-10-30". */
 function isoDay(value: unknown): string | null {
   return str(value)?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
@@ -412,8 +441,8 @@ function officeNames(jobLocation: unknown): string[] {
     const address = (place as { address?: Record<string, unknown> } | null)?.address
     if (!address || typeof address !== "object") continue
     const raw = address.addressLocality
-    const cities = (Array.isArray(raw) ? raw : [raw]).map(str).filter((c): c is string => c !== null)
-    const country = str(address.addressCountry)
+    const cities = (Array.isArray(raw) ? raw : [raw]).map(ldText).filter((c): c is string => c !== null)
+    const country = ldText(address.addressCountry)
     for (const name of cities.length ? cities : country ? [country] : []) {
       if (!names.includes(name)) names.push(name)
     }
@@ -428,9 +457,11 @@ function ldFields(ld: LdPosting | undefined) {
     date: isoDay(ld?.datePosted),
     remoteOnly: ld ? ld.jobLocationType === "TELECOMMUTE" : null,
     offices: officeNames(ld?.jobLocation),
-    employmentType: Array.isArray(type) ? type.filter((t) => typeof t === "string").join(", ") || null : str(type),
+    employmentType: Array.isArray(type)
+      ? type.map(ldText).filter((t): t is string => t !== null).join(", ") || null
+      : ldText(type),
     experienceYears: typeof months === "number" && Number.isFinite(months) && months >= 0 ? Math.round((months / 12) * 10) / 10 : null,
-    category: str(ld?.category),
+    category: ldText(ld?.category),
   }
 }
 
@@ -499,7 +530,7 @@ export function parseSearchPage(html: string, opts: SearchParseOptions = {}): Jo
     if (!url) continue
 
     const titleHtml = header.match(/class="job-item__position[^"]*"[^>]*>([\s\S]*?)<\/h2>/i)?.[1]
-    const title = (titleHtml ? clean(titleHtml) : "") || str(ld?.title)
+    const title = pageOrLd(titleHtml, ld?.title)
     if (!title) continue
 
     if (opts.maxAgeDays !== undefined) {
@@ -515,7 +546,7 @@ export function parseSearchPage(html: string, opts: SearchParseOptions = {}): Jo
     results.push({
       id,
       title,
-      company: (companyHtml ? clean(companyHtml) : "") || str(ld?.hiringOrganization?.name),
+      company: pageOrLd(companyHtml, ld?.hiringOrganization?.name),
       location: locationHtml ? clean(locationHtml) || null : null,
       url,
       english: englishLevel(labels.find((t) => ENGLISH_LABEL.test(t))),
@@ -529,10 +560,11 @@ export function parseSearchPage(html: string, opts: SearchParseOptions = {}): Jo
 /** Parse a single posting's page. `fetchedUrl` is the fallback when the page carries no canonical URL. */
 export function parseJobDetail(html: string, id: string, fetchedUrl: string): JobDetail | null {
   const postings = jsonLdPostings(html)
-  const ld = postings.find((p) => String(p.identifier) === id) ?? postings[0]
+  const ld = postings.find((p) => String(p.identifier) === id)
   const descHtml = extractDivContent(html, "job-post__description")
-  // Neither the structured data nor the description block: not a posting page.
-  if (!ld && descHtml === null) return null
+  // Postings that are all other ids mean another posting's page; neither the
+  // structured data nor the description block means no posting page at all.
+  if (!ld && (postings.length > 0 || descHtml === null)) return null
 
   const descIdx = html.search(/class="[^"]*job-post__description/i)
   const header = descIdx === -1 ? html : html.slice(0, descIdx)
@@ -543,21 +575,26 @@ export function parseJobDetail(html: string, id: string, fetchedUrl: string): Jo
   const locationHtml = aside.match(/class="location-text"[^>]*>([\s\S]*?)<\/span>/i)?.[1]
   const labels = [...aside.matchAll(/<strong[^>]*>([\s\S]*?)<\/strong>/gi)].map((m) => clean(m[1]))
 
-  let description = descHtml !== null ? descriptionText(descHtml) : null
-  if (!description && typeof ld?.description === "string") {
-    description =
-      ld.description
-        .split("\n")
-        .map((line) => line.replace(/\s+/g, " ").trim())
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim() || null
-  }
+  // Fall back to JSON-LD only when the page has no description block or a
+  // literally empty one. A block whose content is all hidden renders as
+  // nothing, and its JSON-LD copy can repeat the hidden text; a block that
+  // opens but never closes (descHtml null, descIdx found) gets no fallback
+  // for the same reason.
+  // Djinni's JSON-LD descriptions are plain text with \n breaks, but are
+  // parsed as HTML so any markup is sanitised like the block's. That fails
+  // closed: a `<` followed by a letter (`List<T>`) starts a tag, and one with
+  // no `>` after it drops the rest of the description.
+  const blockAbsentOrEmpty = descHtml === null ? descIdx === -1 : !descHtml.trim()
+  const description = descHtml?.trim()
+    ? descriptionText(descHtml)
+    : blockAbsentOrEmpty && typeof ld?.description === "string"
+      ? descriptionText(newlinesToBreaks(ld.description))
+      : null
 
   return {
     id,
-    title: (titleHtml ? clean(titleHtml) : "") || str(ld?.title) || "(untitled)",
-    company: (companyHtml ? clean(companyHtml) : "") || str(ld?.hiringOrganization?.name),
+    title: pageOrLd(titleHtml, ld?.title) || "(untitled)",
+    company: pageOrLd(companyHtml, ld?.hiringOrganization?.name),
     location: locationHtml ? clean(locationHtml) || null : null,
     url: djinniJobUrl(ld?.url) ?? fetchedUrl,
     english: englishLevel(labels.find((t) => ENGLISH_LABEL.test(t))),

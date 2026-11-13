@@ -142,6 +142,14 @@ describe("detail requests", () => {
     expect(JSON.parse(out.stderr).code).toBe("NOT_FOUND");
   });
 
+  test("a page whose postings are all other ids is NOT_FOUND, not another posting", async () => {
+    const other = detailPage({ id: 111111, title: "Other Role", company: "Other", descriptionHtml: "<p>Other</p>" });
+    const { out } = mock([other]);
+    expect(await runDetail({ id: "855979", format: "json" })).toBe(1);
+    expect(out.stdout).toBe("");
+    expect(JSON.parse(out.stderr).code).toBe("NOT_FOUND");
+  });
+
   test("an off-host URL is rejected before any request", async () => {
     const { urls, out } = mock([page]);
     expect(await runDetail({ id: "https://boards.greenhouse.io/acme/jobs/855979", format: "json" })).toBe(1);

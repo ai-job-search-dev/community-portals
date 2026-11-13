@@ -45,6 +45,8 @@ This is for personal job searching only: don't republish or resell what it retur
 bun run .agents/skills/djinni-search/cli/src/cli.ts search [flags]
 ```
 
+Query syntax: every word is required; double or single quotes inside the argument make an exact phrase, word order included (e.g. `--query '"product owner"'`); `-word` after a keyword excludes it (e.g. `--query '"product owner" -senior'`; a query that starts with `-` is read as a flag and rejected); no OR (`OR` is ignored and every word is still required).
+
 Key flags:
 - `--query <text>` / `-q <text>` — keywords. Djinni's basic search matches titles and tags.
   Quote multi-word values (`-q "React Native"`): a stray unquoted word is an error, not ignored.
