@@ -213,6 +213,22 @@ test("JSON-LD category, employment type and offices drop hidden markup", async (
   }
 });
 
+// Entity-encoded markup is text: a browser shows `&lt;T&gt;` as the visible
+// characters `<T>`. Decoding it before the hidden-markup pass would turn it
+// into tags that the tag strip then removes, dropping text the reader sees.
+test.each([
+  ["a generic type", "Senior C++ / List&lt;T&gt; Developer", "Senior C++ / List<T> Developer"],
+  ["a hidden span", "Engineer &lt;span hidden&gt;shown&lt;/span&gt;", "Engineer <span hidden>shown</span>"],
+])("entity-encoded markup (%s) is kept as the text the page shows, in the page title and the JSON-LD fallback", async (_name, title, shown) => {
+  const detailTitle = async (page: string) =>
+    JSON.parse(await capture(page, () => runDetail({ id: "900001", format: "json" }))).title;
+  const onPage = await detailTitle(detailPage({ id: 900001, title, company: "Acme", descriptionHtml: "<p>Body</p>" }));
+  const fromLd = await detailTitle(
+    detailPage({ id: 900001, title: "", company: "Acme", descriptionHtml: "<p>Body</p>", postings: [ld({ id: 900001, title })] }),
+  );
+  expect({ onPage, fromLd }).toEqual({ onPage: shown, fromLd: shown });
+});
+
 test("a close tag inside a quoted attribute is not a line break", async () => {
   const page = detailPage({
     id: 900001,
