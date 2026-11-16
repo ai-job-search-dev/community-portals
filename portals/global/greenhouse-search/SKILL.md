@@ -87,8 +87,8 @@ bun run .agents/skills/greenhouse-search/cli/src/cli.ts detail 8926445002 --boar
 | `plain` | Reading one posting in full (`detail`) |
 
 Validation and request errors go to **stderr** as `{ "error": "...", "code": "..." }`, with exit code `1`.
-Running the CLI with no command prints the help text to stdout and exits `1`, as `linkedin-search`
-does; `--help` exits `0`.
+Running the CLI with no command, or a bare `--help`, prints the help text to stdout and exits
+`1`, as `linkedin-search` does; `search --help` and `detail --help` exit `0`.
 
 ## Notes
 

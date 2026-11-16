@@ -98,6 +98,7 @@ describe("argument validation (network blocked)", () => {
   test("non-Greenhouse URL", () => expectError(["detail", "https://www.linkedin.com/jobs/view/1234567890"], "BAD_ID"))
   test("fractional --jobage", () => expectError(["search", "-b", "acme", "--jobage", "0.5"], "BAD_ARG"))
   test("bad --region", () => expectError(["search", "-b", "acme", "--region", "apac"], "BAD_ARG"))
+  test("--__proto__ is an unknown flag, not dropped", () => expectError(["search", "-b", "acme", "--__proto__", "x"], "UNKNOWN_FLAG"))
   test("repeated flag, including via its alias", () => expectError(["search", "-b", "acme", "--board", "other"], "BAD_ARG"))
   test("inherited object key is not a command", () => expectError(["toString", "--foo"], "BAD_CMD"))
   test("short numeric ID with --board", async () => {
