@@ -93,9 +93,10 @@ Search results carry `id` (UUID), `board`, `title`, `company`, `location`,
 `secondaryLocations`, `date` (`publishedAt`, ISO 8601), `workplace`, `department`,
 `employmentType`, `salary`, `url`; missing values are `null`.
 
-Validation and request errors go to **stderr** as `{ "error": "...", "code": "..." }`, with
-exit code `1`. Running the CLI with no command prints the help text to stdout and exits `1`,
-as `linkedin-search` does; `--help` exits `0`.
+Fatal errors (bad arguments, or a search where no board could be read) go to **stderr** as
+`{ "error": "...", "code": "..." }`, with exit code `1`. Running the CLI with no command, or a
+bare `--help`, prints the help text to stdout and exits `1`, as `linkedin-search` does;
+`search --help` and `detail --help` exit `0`.
 
 In a multi-board search, a board that is unknown (`BOARD_NOT_FOUND`) or keeps failing
 (`FETCH_FAILED`) is skipped and the other boards still return results: JSON output reports

@@ -14,7 +14,9 @@ interface Flags {
 
 /** Parse argv; `repeated` names the first flag given more than once (aliases count as the same flag). */
 function parseFlags(argv: string[]): { flags: Flags; repeated: string | null } {
-  const flags: Flags = { _: [] }
+  // Null prototype: a flag named like an Object.prototype member (e.g. --__proto__)
+  // becomes an ordinary key that the unknown-flag check then rejects.
+  const flags: Flags = Object.assign(Object.create(null) as Flags, { _: [] as string[] })
   let repeated: string | null = null
   const alias: Record<string, string> = { q: "query", l: "location", n: "limit", b: "board" }
   for (let i = 0; i < argv.length; i++) {

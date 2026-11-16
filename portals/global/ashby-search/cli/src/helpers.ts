@@ -37,7 +37,7 @@ async function fetchWithBackoff(url: string, accept: string, retry: RetryPolicy 
       if (attempt === maxRetries) throw new Error(`Request failed: ${response.status} ${response.statusText}`)
       // Honor a numeric Retry-After (seconds, capped at 30); otherwise back off exponentially.
       const retryAfter = Number(response.headers.get("retry-after"))
-      const wait = retryAfter > 0 ? Math.min(retryAfter * 1000, 30000) : delay + Math.floor(Math.random() * delay)
+      const wait = retryAfter > 0 ? Math.min(retryAfter * 1000, 30000) : Math.min(delay + Math.floor(Math.random() * delay), 8000)
       await new Promise((r) => setTimeout(r, wait))
       delay = Math.min(delay * 2, 8000)
       continue

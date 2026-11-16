@@ -120,6 +120,7 @@ describe("argument validation (network blocked)", () => {
   test("ashby_jid URL without --board", () => expectError(["detail", `https://www.example.com/careers/?ashby_jid=${PM}`], "BAD_ID"))
   test("foreign URL", () => expectError(["detail", "https://www.linkedin.com/jobs/view/1234567890"], "BAD_ID"))
   test("detail with two boards", () => expectError(["detail", "x", "-b", "a,b"], "BAD_ARG"))
+  test("--__proto__ is an unknown flag, not dropped", () => expectError(["search", "-b", "acme", "--__proto__", "x"], "UNKNOWN_FLAG"))
   test("repeated flag, including via its alias", () => expectError(["search", "-b", "acme", "--board", "other"], "BAD_ARG"))
   test("inherited object key is not a command", () => expectError(["constructor", "-b", "acme"], "BAD_CMD"))
   test("URL board conflicting with --board", async () => {
