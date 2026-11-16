@@ -100,6 +100,24 @@ describe("parseSearchPage", () => {
 });
 
 describe("parseJobDetail", () => {
+  test("matches the posting when its identifier is a string or a PropertyValue object", () => {
+    const base = detailPage({ id: 900001, title: "Full-Stack Engineer", company: "Acme", descriptionHtml: "<p>Text</p>" });
+    for (const identifier of ['"900001"', '{"@type":"PropertyValue","name":"Djinni","value":900001}', '{"@type":"PropertyValue","value":" 900001 "}']) {
+      const html = base.replace(/"identifier":\s*900001/, `"identifier": ${identifier}`);
+      expect(html).not.toBe(base);
+      expect(parseJobDetail(html, "900001", "u")?.title).toBe("Full-Stack Engineer");
+    }
+  });
+
+  test("an identifier it cannot read, or another posting's, still matches nothing", () => {
+    const base = detailPage({ id: 900001, title: "Full-Stack Engineer", company: "Acme", descriptionHtml: "<p>Text</p>" });
+    for (const identifier of ['{"@type":"PropertyValue","value":900002}', '{"value":"900001-x"}', "[900001]", "null", "true"]) {
+      const html = base.replace(/"identifier":\s*900001/, `"identifier": ${identifier}`);
+      expect(html).not.toBe(base);
+      expect(parseJobDetail(html, "900001", "u")).toBeNull();
+    }
+  });
+
   test("reads header, sidebar and description with line breaks kept", () => {
     const html = detailPage({
       id: 900001,

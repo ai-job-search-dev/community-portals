@@ -396,6 +396,20 @@ function jsonLdPostings(html: string): LdPosting[] {
   return out
 }
 
+/**
+ * A posting's id as a digit string, or "" when it has none. Djinni writes a
+ * bare number; schema.org also allows a string or a PropertyValue object
+ * (`{"@type":"PropertyValue","value":853476}`), so those shapes are read too.
+ * Anything else is "" and matches no id: an unreadable identifier must never
+ * let one posting stand in for another.
+ */
+function ldId(posting: LdPosting): string {
+  let raw: unknown = posting.identifier
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) raw = (raw as { value?: unknown }).value
+  const id = typeof raw === "number" || typeof raw === "string" ? String(raw).trim() : ""
+  return /^\d+$/.test(id) ? id : ""
+}
+
 function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.replace(/\s+/g, " ").trim() : null
 }
@@ -506,8 +520,8 @@ export interface SearchParseOptions {
 export function parseSearchPage(html: string, opts: SearchParseOptions = {}): JobCard[] {
   const byId = new Map<string, LdPosting>()
   for (const p of jsonLdPostings(html)) {
-    const id = typeof p.identifier === "number" || typeof p.identifier === "string" ? String(p.identifier) : ""
-    if (/^\d+$/.test(id)) byId.set(id, p)
+    const id = ldId(p)
+    if (id) byId.set(id, p)
   }
   const now = opts.now ?? Date.now()
 
@@ -560,7 +574,7 @@ export function parseSearchPage(html: string, opts: SearchParseOptions = {}): Jo
 /** Parse a single posting's page. `fetchedUrl` is the fallback when the page carries no canonical URL. */
 export function parseJobDetail(html: string, id: string, fetchedUrl: string): JobDetail | null {
   const postings = jsonLdPostings(html)
-  const ld = postings.find((p) => String(p.identifier) === id)
+  const ld = postings.find((p) => ldId(p) === id)
   const descHtml = extractDivContent(html, "job-post__description")
   // Postings that are all other ids mean another posting's page; neither the
   // structured data nor the description block means no posting page at all.
