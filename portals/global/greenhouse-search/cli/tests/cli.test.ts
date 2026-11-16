@@ -1,4 +1,5 @@
 // End-to-end CLI tests, offline: requests go to saved fixtures (tests/fixtures/), never the network.
+import "./no-network.ts"
 import { describe, expect, test } from "bun:test"
 import { join } from "path"
 import { parseJSON, runCLI, runCLIWithFixtures, type Routes } from "./helpers.ts"
@@ -38,8 +39,10 @@ describe("search", () => {
   })
 
   test("--region eu calls the EU host", async () => {
-    const { requests } = await runCLIWithFixtures(["search", "-b", "acme", "--region", "eu"], {}, HOSTS)
-    expect(requests[0].host).toBe("boards-api.eu.greenhouse.io")
+    const eu = { "boards-api.eu.greenhouse.io/v1/boards/acme/jobs": { body: await fixture("board.json") } }
+    const { result, requests } = await runCLIWithFixtures(["search", "-b", "acme", "--region", "eu"], eu, HOSTS)
+    expect(requests.map((u) => `${u.host}${u.pathname}`)).toEqual(["boards-api.eu.greenhouse.io/v1/boards/acme/jobs"])
+    expect(parseJSON<SearchOut>(result).meta).toMatchObject({ count: 3, board: "acme" })
   })
 
   test("unknown board exits 1 with BOARD_NOT_FOUND", async () => {
@@ -71,7 +74,7 @@ describe("detail", () => {
     const { result } = await runCLIWithFixtures(["detail", "4000001", "-b", "acme", "--format", "plain"], await routes(), HOSTS)
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain("Requisition ID: R-4000001")
-    expect(result.stdout).toContain("Pay: $150,000 - $190,000")
+    expect(result.stdout).toContain("Pay (Base salary): $150,000 - $190,000")
   })
 
   test("a closed job exits 1 with NOT_FOUND", async () => {
@@ -95,4 +98,18 @@ describe("argument validation (network blocked)", () => {
   test("non-Greenhouse URL", () => expectError(["detail", "https://www.linkedin.com/jobs/view/1234567890"], "BAD_ID"))
   test("fractional --jobage", () => expectError(["search", "-b", "acme", "--jobage", "0.5"], "BAD_ARG"))
   test("bad --region", () => expectError(["search", "-b", "acme", "--region", "apac"], "BAD_ARG"))
+  test("repeated flag, including via its alias", () => expectError(["search", "-b", "acme", "--board", "other"], "BAD_ARG"))
+  test("inherited object key is not a command", () => expectError(["toString", "--foo"], "BAD_CMD"))
+  test("short numeric ID with --board", async () => {
+    const r = await runCLI(["detail", "123", "-b", "acme"])
+    const err = JSON.parse(r.stderr)
+    expect(err.code).toBe("BAD_ID")
+    expect(err.error).toContain("at least 4 digits")
+  })
+  test("URL board conflicting with --board", async () => {
+    const r = await runCLI(["detail", "https://job-boards.greenhouse.io/acme/jobs/4000001", "-b", "other"])
+    const err = JSON.parse(r.stderr)
+    expect(err.code).toBe("BAD_ID")
+    expect(err.error).toContain('on board "acme" but --board is "other"')
+  })
 })

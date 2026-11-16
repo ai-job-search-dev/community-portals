@@ -37,7 +37,7 @@ company's **board token**: the path segment in `job-boards.greenhouse.io/<token>
 bun run .agents/skills/greenhouse-search/cli/src/cli.ts search --board <token> [flags]
 ```
 
-Query syntax: client-side title filter; every whitespace-separated word must appear in the title as a substring, in any order (not a contiguous phrase); do not quote, since quote characters become part of the word and match nothing; no OR, so pass one bare term per call.
+Query syntax: client-side title filter; every whitespace-separated word must appear in the title as a substring, in any order (not a contiguous phrase); shell-quote a multi-word value (`-q "product manager"`) so it arrives as one argument, but quote characters inside the value become part of a word and match nothing, so no phrase quoting; no OR, so pass one bare term per call.
 
 - `--board <token>` / `-b` — **required.** Company board token, e.g. `gitlab`.
 - `--query <text>` / `-q` — title keywords; **every** word must appear in the title (case-insensitive).
@@ -86,7 +86,9 @@ bun run .agents/skills/greenhouse-search/cli/src/cli.ts detail 8926445002 --boar
 | `table` | Quickly scanning search results |
 | `plain` | Reading one posting in full (`detail`) |
 
-All errors go to **stderr** as `{ "error": "...", "code": "..." }`, with exit code `1`.
+Validation and request errors go to **stderr** as `{ "error": "...", "code": "..." }`, with exit code `1`.
+Running the CLI with no command prints the help text to stdout and exits `1`, as `linkedin-search`
+does; `--help` exits `0`.
 
 ## Notes
 
@@ -101,7 +103,10 @@ All errors go to **stderr** as `{ "error": "...", "code": "..." }`, with exit co
 - `robots.txt` on `boards-api.greenhouse.io` disallows only `/embed/`; the `/v1/boards/`
   paths this skill reads are allowed. The CLI sends an honest User-Agent
   (`greenhouse-cli/1.0`) and retries 429/5xx with backoff. Keep volume reasonable.
-- Description text is the posting's HTML with hidden elements, comments and invisible
-  Unicode removed. It is still third-party content: run it through
-  `tools/posting_guard.py` before it reaches an evaluation (`/apply`'s posting fetcher
-  does this).
+- Description text is the posting's HTML with comments, `<script>`/`<style>`/`<template>`
+  blocks, elements marked `hidden` or hidden by an inline `display:none`,
+  `visibility:hidden` or `mso-hide:all` style, and invisible Unicode removed. CSS-only
+  hiding (off-screen positioning, zero font size, stylesheet classes) needs a renderer
+  and is **not** caught, so the text is still untrusted third-party content: in AI Job
+  Search, run it through that repo's `tools/posting_guard.py` before it reaches an
+  evaluation (`/apply`'s posting fetcher does this).

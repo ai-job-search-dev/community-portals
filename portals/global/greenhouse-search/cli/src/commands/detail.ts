@@ -26,7 +26,9 @@ const squash = (s: string) => s.replace(/\s+/g, " ").trim()
  * only when the description does not already carry its text.
  */
 export function renderPlain(d: JobDetail): string {
-  const pay = d.payRanges.map((p) => `Pay: ${formatMoney(p.min, p.currency)} - ${formatMoney(p.max, p.currency)}`)
+  const pay = d.payRanges.map(
+    (p) => `Pay${p.label ? ` (${p.label})` : ""}: ${formatMoney(p.min, p.currency)} - ${formatMoney(p.max, p.currency)}`,
+  )
   const desc = squash(d.description ?? "")
   const payNotes = d.payRanges
     .map((p) => p.note)
@@ -55,9 +57,15 @@ export function renderPlain(d: JobDetail): string {
 export async function runDetail(opts: DetailOpts): Promise<number> {
   const ref = parseJobRef(opts.input, opts.board, opts.region)
   if (!ref) {
-    const hint = /^\d+$/.test(opts.input.trim())
-      ? " - a bare job ID needs --board <token>"
-      : " - expected a job-boards.greenhouse.io/<board>/jobs/<id> URL, or an ID with --board"
+    const t = opts.input.trim()
+    const urlRef = opts.board ? parseJobRef(t, undefined, opts.region) : null
+    const hint = /^\d+$/.test(t)
+      ? opts.board
+        ? " - Greenhouse job IDs have at least 4 digits"
+        : " - a bare job ID needs --board <token>"
+      : urlRef
+        ? ` - the URL is on board "${urlRef.board}" but --board is "${opts.board}"`
+        : " - expected a job-boards.greenhouse.io/<board>/jobs/<id> URL, or an ID with --board"
     writeError(`Could not resolve a Greenhouse job from "${opts.input}"${hint}`, "BAD_ID")
     return 1
   }

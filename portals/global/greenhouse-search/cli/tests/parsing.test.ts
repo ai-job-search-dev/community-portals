@@ -1,6 +1,8 @@
+import "./no-network.ts"
 import { afterEach, describe, expect, test } from "bun:test"
-import { decodeHtmlEntities, htmlToText, jsonFetch, matchesQuery, parseJobRef, stripInvisible, toDetail, withinDays } from "../src/helpers.ts"
+import { decodeHtmlEntities, formatMoney, htmlToText, jsonFetch, matchesQuery, parseJobRef, stripInvisible, toDetail, withinDays } from "../src/helpers.ts"
 import { renderPlain } from "../src/commands/detail.ts"
+import { toCard } from "../src/helpers.ts"
 
 describe("parseJobRef", () => {
   test("job-boards URL", () => {
@@ -35,6 +37,13 @@ describe("parseJobRef", () => {
   })
   test("URL board conflicting with --board is rejected", () => {
     expect(parseJobRef("https://job-boards.greenhouse.io/acme/jobs/123456", "other")).toBeNull()
+  })
+  test("embed URL board conflicting with --board is rejected", () => {
+    expect(parseJobRef("https://boards.greenhouse.io/embed/job_app?for=acme&token=123456", "other")).toBeNull()
+  })
+  test("inherited object keys are not allowed hosts", () => {
+    expect(parseJobRef("https://constructor/acme/jobs/123456")).toBeNull()
+    expect(parseJobRef("https://tostring/acme/jobs/123456")).toBeNull()
   })
 })
 
@@ -76,6 +85,21 @@ describe("jsonFetch backoff", () => {
     expect(times.length).toBe(2)
     expect(times[1] - times[0]).toBeGreaterThanOrEqual(950)
   })
+  test("retries a 5xx without Retry-After using exponential backoff", async () => {
+    let calls = 0
+    globalThis.fetch = (async () => (++calls < 3 ? new Response("", { status: 503 }) : new Response("[]", { status: 200 }))) as unknown as typeof fetch
+    expect(await jsonFetch<unknown[]>("https://boards-api.greenhouse.io/v1/boards/acme/jobs", { maxRetries: 3, baseDelayMs: 1 })).toEqual([])
+    expect(calls).toBe(3)
+  })
+  test("throws after the last retry", async () => {
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      return new Response("", { status: 500, statusText: "Internal Server Error" })
+    }) as unknown as typeof fetch
+    await expect(jsonFetch("https://boards-api.greenhouse.io/v1/boards/acme/jobs", { maxRetries: 2, baseDelayMs: 1 })).rejects.toThrow("500")
+    expect(calls).toBe(3)
+  })
   test("404 returns null", async () => {
     globalThis.fetch = (async () => new Response("", { status: 404 })) as unknown as typeof fetch
     expect(await jsonFetch("https://boards-api.greenhouse.io/v1/boards/nope/jobs")).toBeNull()
@@ -93,8 +117,21 @@ describe("filters and hygiene", () => {
     expect(withinDays("2026-10-01T00:00:00Z", 7, now)).toBe(false)
     expect(withinDays(null, 7, now)).toBe(false)
   })
+  test("withinDays rejects dates well in the future, tolerating small clock skew", () => {
+    const now = Date.parse("2026-11-06T12:00:00Z")
+    expect(withinDays("2026-12-01T00:00:00Z", 7, now)).toBe(false)
+    expect(withinDays("2026-11-06T12:30:00Z", 7, now)).toBe(true)
+  })
+  test("query matching ignores invisible characters in the title", () => {
+    const card = stripInvisible(toCard({ id: 1, title: "Prod\u200Buct Manager", absolute_url: "u" }, "acme"))
+    expect(matchesQuery(card.title, "product")).toBe(true)
+  })
+  test("formatMoney keeps cents only when there are some", () => {
+    expect(formatMoney(150000, "USD")).toBe("$150,000")
+    expect(formatMoney(15.5, "USD")).toBe("$15.50")
+  })
   test("stripInvisible removes zero-width and tag characters", () => {
-    expect(stripInvisible({ a: "Prod​uct\u{E0041}" })).toEqual({ a: "Product" })
+    expect(stripInvisible({ a: "Prod\u200Buct\u{E0041}" })).toEqual({ a: "Product" })
   })
   test("toDetail maps pay ranges from cents", () => {
     const d = toDetail(
@@ -127,6 +164,9 @@ describe("entity decoding (double-escaped Greenhouse content)", () => {
   })
   test("unknown entities are left visible", () => {
     expect(decodeHtmlEntities("a &bogusentity; b")).toBe("a &bogusentity; b")
+  })
+  test("inherited object keys are not entities", () => {
+    expect(decodeHtmlEntities("&constructor; &toString;")).toBe("&constructor; &toString;")
   })
 })
 

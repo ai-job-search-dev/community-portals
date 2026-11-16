@@ -17,10 +17,17 @@ export function writeError(error: string, code: string): void {
 
 const UA = "Mozilla/5.0 (compatible; greenhouse-cli/1.0)"
 
+/** Retry policy for jsonFetch; tests pass a fast one. */
+export interface RetryPolicy {
+  maxRetries: number
+  baseDelayMs: number
+}
+const DEFAULT_RETRY: RetryPolicy = { maxRetries: 6, baseDelayMs: 500 }
+
 /** Fetch JSON, backing off on 429/5xx (Retry-After when sent, else exponential with jitter). Returns null on a 404. */
-export async function jsonFetch<T = unknown>(url: string): Promise<T | null> {
-  const maxRetries = 6
-  let delay = 500
+export async function jsonFetch<T = unknown>(url: string, retry: RetryPolicy = DEFAULT_RETRY): Promise<T | null> {
+  const { maxRetries } = retry
+  let delay = retry.baseDelayMs
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
@@ -33,7 +40,7 @@ export async function jsonFetch<T = unknown>(url: string): Promise<T | null> {
       }
       // Honor a numeric Retry-After (seconds, capped at 30); otherwise back off exponentially.
       const retryAfter = Number(response.headers.get("retry-after"))
-      const wait = retryAfter > 0 ? Math.min(retryAfter * 1000, 30000) : delay + Math.floor(Math.random() * 500)
+      const wait = retryAfter > 0 ? Math.min(retryAfter * 1000, 30000) : delay + Math.floor(Math.random() * delay)
       await new Promise((r) => setTimeout(r, wait))
       delay = Math.min(delay * 2, 8000)
       continue
@@ -99,8 +106,9 @@ export function parseJobRef(input: string, board?: string, region: Region = "us"
     return null
   }
   if (parsed.username || parsed.password) return null
-  const urlRegion = HOST_REGION[parsed.hostname.toLowerCase()]
-  if (!urlRegion) return null
+  const host = parsed.hostname.toLowerCase()
+  if (!Object.prototype.hasOwnProperty.call(HOST_REGION, host)) return null
+  const urlRegion = HOST_REGION[host]
 
   const path = parsed.pathname.match(/^\/(?:v1\/boards\/)?([A-Za-z0-9_-]+)\/jobs\/(\d{4,})\/?$/)
   if (path) {
@@ -111,6 +119,7 @@ export function parseJobRef(input: string, board?: string, region: Region = "us"
   const embedBoard = parsed.searchParams.get("for")
   const embedId = parsed.searchParams.get("token")
   if (embedBoard && embedId && isValidBoard(embedBoard) && /^\d{4,}$/.test(embedId)) {
+    if (board && board !== embedBoard) return null
     return { board: embedBoard, id: embedId, region: urlRegion }
   }
   return null
@@ -148,7 +157,10 @@ export function decodeHtmlEntities(text: string): string {
       const hex = name[1] === "x" || name[1] === "X"
       return numericEntity(parseInt(name.slice(hex ? 2 : 1), hex ? 16 : 10))
     }
-    return NAMED_ENTITIES[name] ?? NAMED_ENTITIES[name.toLowerCase()] ?? whole
+    for (const key of [name, name.toLowerCase()]) {
+      if (Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, key)) return NAMED_ENTITIES[key]
+    }
+    return whole
   })
 }
 
@@ -373,16 +385,26 @@ export function matchesLocation(location: string | null, wanted: string | undefi
   return (location ?? "").toLowerCase().includes(wanted.toLowerCase())
 }
 
-/** Posted within N days, judged by first_published (falling back to updated_at). */
+/** Clock-skew allowance for a publish date slightly ahead of this machine's clock. */
+const FUTURE_SKEW_MS = 60 * 60 * 1000
+
+/**
+ * Posted within N days, judged by first_published (falling back to updated_at).
+ * A date further in the future than the skew allowance fails, rather than
+ * passing every cutoff with a negative age.
+ */
 export function withinDays(date: string | null, days: number | undefined, now = Date.now()): boolean {
   if (!days) return true
   if (!date) return false
   const t = Date.parse(date)
   if (Number.isNaN(t)) return false
-  return now - t <= days * 86400000
+  const age = now - t
+  return age >= -FUTURE_SKEW_MS && age <= days * 86400000
 }
 
+/** Whole amounts print without decimals; fractional ones (hourly pay) keep two. */
 export function formatMoney(n: number, currency: string): string {
-  const s = Math.round(n).toLocaleString("en-US")
+  const cents = Number.isInteger(n) ? 0 : 2
+  const s = n.toLocaleString("en-US", { minimumFractionDigits: cents, maximumFractionDigits: cents })
   return currency === "USD" ? `$${s}` : `${s} ${currency}`
 }

@@ -48,7 +48,8 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     }
 
     const matched = (data.jobs ?? [])
-      .map((j) => toCard(j, opts.board))
+      // Sanitize before matching, so an invisible character cannot hide a visible match.
+      .map((j) => stripInvisible(toCard(j, opts.board)))
       .filter(
         (c) =>
           matchesQuery(c.title, opts.query) &&
@@ -58,7 +59,7 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
       .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0))
 
     const start = (opts.page - 1) * PAGE_SIZE
-    let cards = stripInvisible(matched.slice(start, start + PAGE_SIZE))
+    let cards = matched.slice(start, start + PAGE_SIZE)
     if (opts.limit !== undefined) cards = cards.slice(0, opts.limit)
 
     if (opts.format === "table") {

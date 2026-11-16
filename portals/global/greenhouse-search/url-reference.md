@@ -30,11 +30,12 @@ Errors: unknown board or job → HTTP 404 with body `{"status":404,"error":"Job 
 
 | CLI flag | API | Notes |
 |----------|-----|-------|
-| `--board` | path `{board}` | Validated `^[A-Za-z0-9_-]+$` |
+| `--board` | path `{board}` | Validated `^[A-Za-z0-9_-]{1,100}$` |
 | `--query` | — | Client-side: all terms in `title` |
 | `--location` | — | Client-side: substring of `location.name` |
 | `--jobage` | — | Client-side: `first_published` (fallback `updated_at`) |
-| `--page` / `--limit` | — | Client-side: 20 per page, sorted newest first |
+| `--page` | — | Client-side: 20 per page, sorted newest first |
+| `--limit` | — | Client-side: caps the page after slicing, so a page can return fewer than 20 |
 | `--region` | host | `us` / `eu` |
 
 ## List item fields

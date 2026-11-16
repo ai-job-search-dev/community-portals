@@ -13,7 +13,8 @@ export interface CLIResult {
 
 /** Run the CLI with network access blocked (the default) or under another preload. */
 export async function runCLI(args: string[], preload = NO_NETWORK): Promise<CLIResult> {
-  const proc = Bun.spawn(["bun", "run", "--preload", preload, CLI_PATH, ...args], {
+  // process.execPath: the same Bun binary that runs the tests, not whatever "bun" is on PATH.
+  const proc = Bun.spawn([process.execPath, "run", "--preload", preload, CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -40,35 +41,36 @@ export async function runCLIWithFixtures(
   allowedHosts: string[],
 ): Promise<{ result: CLIResult; requests: URL[] }> {
   const requests: URL[] = [];
-  const server = Bun.serve({
-    hostname: "127.0.0.1",
-    port: 0,
-    fetch(request) {
-      const url = new URL(request.url);
-      const [host, ...rest] = url.pathname.slice(1).split("/");
-      const original = new URL(`https://${host}/${rest.join("/")}${url.search}`);
-      requests.push(original);
-      const route = routes[`${original.host}${original.pathname}`];
-      if (!route) return new Response(JSON.stringify({ status: 404, error: "Not found" }), { status: 404 });
-      const body = typeof route.body === "string" ? route.body : JSON.stringify(route.body);
-      return new Response(body, { status: route.status ?? 200 });
-    },
-  });
   const dir = mkdtempSync(join(tmpdir(), "portal-fixtures-"));
-  const preload = join(dir, "fetch.ts");
-  writeFileSync(preload, `
-    const originalFetch = globalThis.fetch;
-    const allowed = new Set(${JSON.stringify(allowedHosts)});
-    globalThis.fetch = (input, init) => {
-      const url = new URL(input instanceof Request ? input.url : String(input));
-      if (url.protocol !== "https:" || !allowed.has(url.host)) throw new Error("Unexpected request to " + url.host);
-      return originalFetch(${JSON.stringify(server.url.origin)} + "/" + url.host + url.pathname + url.search, init);
-    };
-  `);
+  let server: ReturnType<typeof Bun.serve> | undefined;
   try {
+    server = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch(request) {
+        const url = new URL(request.url);
+        const [host, ...rest] = url.pathname.slice(1).split("/");
+        const original = new URL(`https://${host}/${rest.join("/")}${url.search}`);
+        requests.push(original);
+        const route = routes[`${original.host}${original.pathname}`];
+        if (!route) return new Response(JSON.stringify({ status: 404, error: "Not found" }), { status: 404 });
+        const body = typeof route.body === "string" ? route.body : JSON.stringify(route.body);
+        return new Response(body, { status: route.status ?? 200 });
+      },
+    });
+    const preload = join(dir, "fetch.ts");
+    writeFileSync(preload, `
+      const originalFetch = globalThis.fetch;
+      const allowed = new Set(${JSON.stringify(allowedHosts)});
+      globalThis.fetch = (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.protocol !== "https:" || !allowed.has(url.host)) throw new Error("Unexpected request to " + url.host);
+        return originalFetch(${JSON.stringify(server.url.origin)} + "/" + url.host + url.pathname + url.search, init);
+      };
+    `);
     return { result: await runCLI(args, preload), requests };
   } finally {
-    server.stop(true);
+    server?.stop(true);
     rmSync(dir, { recursive: true, force: true });
   }
 }
