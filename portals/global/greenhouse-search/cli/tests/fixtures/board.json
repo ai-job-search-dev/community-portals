@@ -1,0 +1,58 @@
+{
+  "jobs": [
+    {
+      "id": 4000001,
+      "internal_job_id": 4001001,
+      "title": "Senior Product Manager, Platform",
+      "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/4000001",
+      "company_name": "Acme Robotics",
+      "location": {
+        "name": "Remote - United States"
+      },
+      "first_published": "2026-10-20T09:00:00-04:00",
+      "updated_at": "2026-10-20T09:00:00-04:00",
+      "requisition_id": "R-4000001",
+      "language": "en",
+      "application_deadline": null,
+      "metadata": [],
+      "data_compliance": []
+    },
+    {
+      "id": 4000002,
+      "internal_job_id": 4001002,
+      "title": "Staff Software Engineer",
+      "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/4000002",
+      "company_name": "Acme Robotics",
+      "location": {
+        "name": "Denver, CO"
+      },
+      "first_published": "2026-10-28T09:00:00-04:00",
+      "updated_at": "2026-10-28T09:00:00-04:00",
+      "requisition_id": "R-4000002",
+      "language": "en",
+      "application_deadline": null,
+      "metadata": [],
+      "data_compliance": []
+    },
+    {
+      "id": 4000003,
+      "internal_job_id": 4001003,
+      "title": "Product Designer",
+      "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/4000003",
+      "company_name": "Acme Robotics",
+      "location": {
+        "name": "Remote - United States; Austin, TX"
+      },
+      "first_published": "2026-10-25T09:00:00-04:00",
+      "updated_at": "2026-10-25T09:00:00-04:00",
+      "requisition_id": "R-4000003",
+      "language": "en",
+      "application_deadline": null,
+      "metadata": [],
+      "data_compliance": []
+    }
+  ],
+  "meta": {
+    "total": 3
+  }
+}
