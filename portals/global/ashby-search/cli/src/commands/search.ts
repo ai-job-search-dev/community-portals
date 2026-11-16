@@ -45,26 +45,48 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
   try {
     const all: JobCard[] = []
     const boardStats: { board: string; company: string | null; total: number | null; error: string | null }[] = []
+    const failures: { board: string; message: string }[] = []
 
     for (let i = 0; i < opts.boards.length; i++) {
       const board = opts.boards[i]
       if (i > 0) await new Promise((r) => setTimeout(r, BOARD_GAP_MS + Math.floor(Math.random() * 400)))
-      const data = await fetchBoard(board)
+      let data: Awaited<ReturnType<typeof fetchBoard>>
+      try {
+        data = await fetchBoard(board)
+      } catch (e) {
+        // One failing board must not discard the others; a single-board search still fails.
+        if (opts.boards.length === 1) throw e
+        boardStats.push({ board, company: null, total: null, error: "FETCH_FAILED" })
+        failures.push({ board, message: e instanceof Error ? e.message : String(e) })
+        continue
+      }
       if (!data) {
         boardStats.push({ board, company: null, total: null, error: "BOARD_NOT_FOUND" })
+        failures.push({ board, message: "no Ashby job board with this slug (HTTP 404)" })
         continue
       }
       const jobs = (data.jobs ?? []).filter((j) => j.isListed !== false)
       const company = jobs.length ? await fetchOrgName(board) : null
       boardStats.push({ board, company: company ?? board, total: jobs.length, error: null })
-      for (const j of jobs) all.push(toCard(j, board, company))
+      // Sanitize before matching, so an invisible character cannot hide a visible match.
+      for (const j of jobs) all.push(stripInvisible(toCard(j, board, company)))
     }
 
-    // A single-board search for a board that does not exist is an error, as in
-    // greenhouse-search; in a multi-board search it is reported in meta.boards.
-    if (opts.boards.length === 1 && boardStats[0].error) {
-      writeError(`No Ashby job board named "${opts.boards[0]}" (HTTP 404)`, "BOARD_NOT_FOUND")
+    // Every board failing is an error, as a single unknown board is in greenhouse-search;
+    // otherwise failed boards are reported in meta.boards (JSON) or as stderr warnings.
+    if (boardStats.every((b) => b.error)) {
+      const allMissing = boardStats.every((b) => b.error === "BOARD_NOT_FOUND")
+      const msg = opts.boards.length === 1
+        ? `No Ashby job board named "${opts.boards[0]}" (HTTP 404)`
+        : `No board could be read: ${failures.map((f) => `${f.board} (${f.message})`).join("; ")}`
+      writeError(msg, allMissing ? "BOARD_NOT_FOUND" : "SEARCH_FAILED")
       return 1
+    }
+    if (opts.format !== "json") {
+      for (const f of failures) {
+        const code = boardStats.find((b) => b.board === f.board)?.error ?? "FETCH_FAILED"
+        process.stderr.write(JSON.stringify({ warning: `board "${f.board}" skipped: ${f.message}`, code }) + "\n")
+      }
     }
 
     const matched = all
@@ -78,7 +100,7 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
       .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0))
 
     const start = (opts.page - 1) * PAGE_SIZE
-    let cards = stripInvisible(matched.slice(start, start + PAGE_SIZE))
+    let cards = matched.slice(start, start + PAGE_SIZE)
     if (opts.limit !== undefined) cards = cards.slice(0, opts.limit)
 
     if (opts.format === "table") {

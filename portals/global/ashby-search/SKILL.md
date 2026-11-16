@@ -39,7 +39,7 @@ companies' **board slugs**: the path segment in `jobs.ashbyhq.com/<slug>` (e.g. 
 bun run .agents/skills/ashby-search/cli/src/cli.ts search --board <slug[,slug...]> [flags]
 ```
 
-Query syntax: client-side title filter; every word must appear in the title as a whole word, in any order (not a contiguous phrase); quote marks are stripped and add nothing; no OR, so pass one bare term per call.
+Query syntax: client-side title filter; every word must appear in the title as a whole word, in any order (not a contiguous phrase); shell-quote a multi-word value (`-q "product manager"`) so it arrives as one argument, but quote marks inside the value are ignored, so no phrase quoting; no OR, so pass one bare term per call.
 
 - `--board <slugs>` / `-b` - **required.** One board slug, or up to 25 comma-separated (`linear,ramp,notion`).
 - `--query <text>` / `-q` - title keywords; **every** word must appear in the title (case-insensitive).
@@ -93,9 +93,15 @@ Search results carry `id` (UUID), `board`, `title`, `company`, `location`,
 `secondaryLocations`, `date` (`publishedAt`, ISO 8601), `workplace`, `department`,
 `employmentType`, `salary`, `url`; missing values are `null`.
 
-All errors go to **stderr** as `{ "error": "...", "code": "..." }`, with exit code `1`.
-A single unknown board exits with `BOARD_NOT_FOUND`; in a multi-board search an unknown
-board is reported in `meta.boards[].error` and the other boards still return results.
+Validation and request errors go to **stderr** as `{ "error": "...", "code": "..." }`, with
+exit code `1`. Running the CLI with no command prints the help text to stdout and exits `1`,
+as `linkedin-search` does; `--help` exits `0`.
+
+In a multi-board search, a board that is unknown (`BOARD_NOT_FOUND`) or keeps failing
+(`FETCH_FAILED`) is skipped and the other boards still return results: JSON output reports
+it in `meta.boards[].error`, and `table`/`plain` output writes a
+`{ "warning": "...", "code": "..." }` line to stderr. A single-board search, or one where
+every board fails, exits `1`.
 
 ## Notes
 
@@ -122,6 +128,10 @@ board is reported in `meta.boards[].error` and the other boards still return res
   board pages are allowed. `api.ashbyhq.com` serves no robots.txt (it answers 401). The
   CLI sends an honest User-Agent (`ashby-cli/1.0`), retries 429/5xx with backoff and
   pauses briefly between boards.
-- Description text is built from the posting HTML with hidden elements, comments and
-  invisible Unicode removed. It is still third-party content: run it through
-  `tools/posting_guard.py` before it reaches an evaluation.
+- Description text is built from the posting HTML with comments,
+  `<script>`/`<style>`/`<template>` blocks, elements marked `hidden` or hidden by an inline
+  `display:none`, `visibility:hidden` or `mso-hide:all` style, and invisible Unicode
+  removed. CSS-only hiding (off-screen positioning, zero font size, stylesheet classes)
+  needs a renderer and is **not** caught, so the text is still untrusted third-party
+  content: in AI Job Search, run it through that repo's `tools/posting_guard.py` before
+  it reaches an evaluation.

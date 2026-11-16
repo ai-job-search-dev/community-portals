@@ -1,4 +1,5 @@
 // End-to-end CLI tests, offline: requests go to saved fixtures (tests/fixtures/), never the network.
+import "./no-network.ts"
 import { describe, expect, test } from "bun:test"
 import { join } from "path"
 import { parseJSON, runCLI, runCLIWithFixtures, type Routes } from "./helpers.ts"
@@ -45,6 +46,27 @@ describe("search", () => {
     expect(out.results.length).toBe(3)
   })
 
+  test("table output warns on stderr about a skipped board and still exits 0", async () => {
+    const { result } = await runCLIWithFixtures(["search", "-b", "acme,no-such-board", "--format", "table"], await routes(), HOSTS)
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain("Senior Product Manager, Platform")
+    expect(JSON.parse(result.stderr)).toMatchObject({ code: "BOARD_NOT_FOUND" })
+  })
+
+  test("a board that keeps failing is reported, the others still return", async () => {
+    const r = { ...(await routes()), "api.ashbyhq.com/posting-api/job-board/flaky": { body: "", status: 400 } }
+    const { result } = await runCLIWithFixtures(["search", "-b", "acme,flaky"], r, HOSTS)
+    const out = parseJSON<SearchOut>(result)
+    expect(out.meta.boards[1]).toEqual({ board: "flaky", company: null, total: null, error: "FETCH_FAILED" })
+    expect(out.results.length).toBe(3)
+  })
+
+  test("every board failing exits 1", async () => {
+    const { result } = await runCLIWithFixtures(["search", "-b", "nope-a,nope-b"], await routes(), HOSTS)
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stderr).code).toBe("BOARD_NOT_FOUND")
+  })
+
   test("a single unknown board exits 1 with BOARD_NOT_FOUND", async () => {
     const { result } = await runCLIWithFixtures(["search", "-b", "no-such-board"], await routes(), HOSTS)
     expect(result.exitCode).toBe(1)
@@ -56,7 +78,7 @@ describe("search", () => {
 describe("detail", () => {
   test("board URL returns readable text without the hidden element, plus pay", async () => {
     const { result } = await runCLIWithFixtures(["detail", `https://jobs.ashbyhq.com/acme/${PM}`], await routes(), HOSTS)
-    const d = parseJSON<{ id: string; company: string; description: string; pay: { type: string; min: number; max: number }[] }>(result)
+    const d = parseJSON<{ id: string; company: string; description: string; pay: { type: string; interval: string; currency: string; min: number; max: number }[] }>(result)
     expect(d.id).toBe(PM)
     expect(d.company).toBe("Acme Robotics")
     expect(d.description).toBe("About Acme\nAcme builds warehouse robots.\n\n- Own the platform roadmap\n- Work with engineering — daily")
@@ -98,4 +120,12 @@ describe("argument validation (network blocked)", () => {
   test("ashby_jid URL without --board", () => expectError(["detail", `https://www.example.com/careers/?ashby_jid=${PM}`], "BAD_ID"))
   test("foreign URL", () => expectError(["detail", "https://www.linkedin.com/jobs/view/1234567890"], "BAD_ID"))
   test("detail with two boards", () => expectError(["detail", "x", "-b", "a,b"], "BAD_ARG"))
+  test("repeated flag, including via its alias", () => expectError(["search", "-b", "acme", "--board", "other"], "BAD_ARG"))
+  test("inherited object key is not a command", () => expectError(["constructor", "-b", "acme"], "BAD_CMD"))
+  test("URL board conflicting with --board", async () => {
+    const r = await runCLI(["detail", `https://jobs.ashbyhq.com/acme/${PM}`, "-b", "other"])
+    const err = JSON.parse(r.stderr)
+    expect(err.code).toBe("BAD_ID")
+    expect(err.error).toContain('on board "acme" but --board is "other"')
+  })
 })

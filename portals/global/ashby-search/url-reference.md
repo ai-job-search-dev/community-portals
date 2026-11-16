@@ -30,12 +30,13 @@ extracted by brace matching (string-aware), not by an end-of-script regex. Other
 
 | CLI flag | API | Notes |
 |----------|-----|-------|
-| `--board` | path `{board}` | Validated `^[A-Za-z0-9._-]+$`; comma list up to 25 |
+| `--board` | path `{board}` | Validated `^[A-Za-z0-9._-]{1,100}$`, never `.` or `..`; comma list up to 25 |
 | `--query` | - | Client-side: all words in `title` |
 | `--location` | - | Client-side: substring of `location` or any `secondaryLocations[].location` |
 | `--remote` | - | Client-side: `workplaceType` (`Remote`/`Hybrid`/`OnSite`), else `isRemote`, else "Remote" in a location (remote only) |
 | `--jobage` | - | Client-side: `publishedAt` |
-| `--page` / `--limit` | - | Client-side: 20 per page, newest first |
+| `--page` | - | Client-side: 20 per page, newest first |
+| `--limit` | - | Client-side: caps the page after slicing, so a page can return fewer than 20 |
 
 ## Job fields
 
@@ -63,4 +64,7 @@ hidden markup is dropped.
 ## Mapping to the portal-skill contract
 
 `id` ← `id`, `title` ← `title`, `company` ← `organization.name` (board page) ?? board slug,
-`location` ← `location`, `date` ← `publishedAt`, `url` ← `jobUrl`.
+`location` ← `location`, `date` ← `publishedAt`, `url` ← `jobUrl` ?? `https://jobs.ashbyhq.com/<board>/<id>`.
+
+`search` leaves out jobs with `isListed === false`; `detail` still returns them, with
+`isActive: false`.

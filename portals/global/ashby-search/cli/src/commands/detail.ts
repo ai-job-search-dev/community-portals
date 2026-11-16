@@ -19,6 +19,8 @@ export function renderPlain(d: JobDetail): string {
   const pay = d.pay
     .filter((p) => p.type === "Salary" || p.type === null)
     .map((p) => `Pay: ${formatMoney(p.min, p.currency)} - ${formatMoney(p.max, p.currency)}${p.interval ? ` (${p.interval.toLowerCase()})` : ""}`)
+  // Department and team, either of which may be missing.
+  const unit = [d.department, d.team && d.team !== d.department ? d.team : null].filter(Boolean).join(" / ")
   // null = omitted line; "" = intentional blank separator.
   const lines: (string | null)[] = [
     d.title,
@@ -27,7 +29,7 @@ export function renderPlain(d: JobDetail): string {
     d.secondaryLocations.length ? `Also: ${d.secondaryLocations.join("; ")}` : null,
     d.workplace ? `Workplace: ${d.workplace}` : null,
     d.employmentType ? `Employment: ${d.employmentType}` : null,
-    d.department ? `Department: ${d.department}${d.team && d.team !== d.department ? ` / ${d.team}` : ""}` : null,
+    unit ? `Department: ${unit}` : null,
     d.date ? `Posted: ${d.date.slice(0, 10)}` : null,
     d.compensation ? `Compensation: ${d.compensation}` : null,
     ...pay,
@@ -45,11 +47,14 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
   const ref = parseJobRef(opts.input, opts.board)
   if (!ref) {
     const t = opts.input.trim()
+    const urlRef = opts.board ? parseJobRef(t) : null
     const hint = /^[0-9a-f-]{36}$/i.test(t)
       ? " - a bare job ID needs --board <slug>"
-      : /ashby_jid=/i.test(t)
-        ? " - a company careers URL with ?ashby_jid= needs --board <slug> (the slug is not in that URL)"
-        : " - expected a jobs.ashbyhq.com/<board>/<id> URL, or an ID with --board"
+      : urlRef
+        ? ` - the URL is on board "${urlRef.board}" but --board is "${opts.board}"`
+        : /ashby_jid=/i.test(t)
+          ? " - a company careers URL with ?ashby_jid= needs --board <slug> (the slug is not in that URL)"
+          : " - expected a jobs.ashbyhq.com/<board>/<id> URL, or an ID with --board"
     writeError(`Could not resolve an Ashby job from "${opts.input}"${hint}`, "BAD_ID")
     return 1
   }

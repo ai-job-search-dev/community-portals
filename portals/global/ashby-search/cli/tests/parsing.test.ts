@@ -1,4 +1,6 @@
+import "./no-network.ts"
 import { afterEach, describe, expect, test } from "bun:test"
+import { renderPlain } from "../src/commands/detail.ts"
 import {
   decodeHtmlEntities,
   htmlToText,
@@ -102,6 +104,15 @@ describe("filters", () => {
     expect(withinDays(card.date, 7, now)).toBe(false)
     expect(withinDays(null, 7, now)).toBe(false)
   })
+  test("jobage rejects dates well in the future, tolerating small clock skew", () => {
+    const now = new Date("2026-11-09T00:00:00Z")
+    expect(withinDays("2026-12-01T00:00:00Z", 7, now)).toBe(false)
+    expect(withinDays("2026-11-09T00:30:00Z", 7, now)).toBe(true)
+  })
+  test("title matching ignores invisible characters once cards are sanitized", () => {
+    const c = stripInvisible(toCard(job({ title: "Prin\u200Bcipal Product Manager" }), "acme", "Acme"))
+    expect(titleMatches(c.title, "Principal")).toBe(true)
+  })
 })
 
 describe("parseJobRef", () => {
@@ -118,6 +129,7 @@ describe("parseJobRef", () => {
     expect(parseJobRef(`https://jobs.ashbyhq.com@evil.io/acme/${ID}`)).toBeNull()
     expect(parseJobRef(`https://jobs.ashbyhq.com/acme/${ID}`, "other")).toBeNull()
     expect(parseJobRef("https://job-boards.greenhouse.io/x/jobs/123")).toBeNull()
+    expect(parseJobRef(`https://jobs.ashbyhq.com/%E0%A4%A/${ID}`)).toBeNull()
   })
 })
 
@@ -131,7 +143,7 @@ describe("organization name", () => {
 })
 
 test("stripInvisible removes zero-width and tag characters", () => {
-  expect(stripInvisible({ t: "P​M\u{E0041}" })).toEqual({ t: "PM" })
+  expect(stripInvisible({ t: "P\u200BM\u{E0041}" })).toEqual({ t: "PM" })
 })
 
 describe("hidden markup and entities", () => {
@@ -141,6 +153,7 @@ describe("hidden markup and entities", () => {
   test("entities decode in a single pass", () => {
     expect(decodeHtmlEntities("it&rsquo;s &ldquo;ok&rdquo;&hellip; Acme&trade;")).toBe("it’s “ok”… Acme™")
     expect(decodeHtmlEntities("&amp;lt;b&amp;gt;")).toBe("&lt;b&gt;")
+    expect(decodeHtmlEntities("&constructor; &toString;")).toBe("&constructor; &toString;")
   })
 })
 
@@ -161,8 +174,28 @@ describe("jsonFetch backoff", () => {
     expect(times.length).toBe(2)
     expect(times[1] - times[0]).toBeGreaterThanOrEqual(950)
   })
+  test("retries a 5xx without Retry-After using exponential backoff", async () => {
+    let calls = 0
+    globalThis.fetch = (async () => (++calls < 3 ? new Response("", { status: 503 }) : new Response("{}", { status: 200 }))) as unknown as typeof fetch
+    expect(await jsonFetch<object>("https://api.ashbyhq.com/posting-api/job-board/acme", { maxRetries: 3, baseDelayMs: 1 })).toEqual({})
+    expect(calls).toBe(3)
+  })
+  test("throws after the last retry", async () => {
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      return new Response("", { status: 500, statusText: "Internal Server Error" })
+    }) as unknown as typeof fetch
+    await expect(jsonFetch("https://api.ashbyhq.com/posting-api/job-board/acme", { maxRetries: 2, baseDelayMs: 1 })).rejects.toThrow("500")
+    expect(calls).toBe(3)
+  })
   test("404 returns null", async () => {
     globalThis.fetch = (async () => new Response("", { status: 404 })) as unknown as typeof fetch
     expect(await jsonFetch("https://api.ashbyhq.com/posting-api/job-board/nope")).toBeNull()
   })
+})
+
+test("plain detail shows the team even without a department", () => {
+  const out = renderPlain(toDetail(job({ department: null, team: "Platform" }), "acme", "Acme"))
+  expect(out).toContain("Department: Platform")
 })

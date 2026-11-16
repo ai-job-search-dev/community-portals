@@ -16,10 +16,17 @@ export function writeError(error: string, code: string): void {
 
 const UA = "Mozilla/5.0 (compatible; ashby-cli/1.0)"
 
+/** Retry policy for the fetch helpers; tests pass a fast one. */
+export interface RetryPolicy {
+  maxRetries: number
+  baseDelayMs: number
+}
+const DEFAULT_RETRY: RetryPolicy = { maxRetries: 6, baseDelayMs: 500 }
+
 /** Fetch, backing off on 429/5xx (Retry-After when sent, else exponential with jitter). Returns null on a 404. */
-async function fetchWithBackoff(url: string, accept: string): Promise<Response | null> {
-  const maxRetries = 6
-  let delay = 500
+async function fetchWithBackoff(url: string, accept: string, retry: RetryPolicy = DEFAULT_RETRY): Promise<Response | null> {
+  const { maxRetries } = retry
+  let delay = retry.baseDelayMs
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, {
       headers: { "User-Agent": UA, Accept: accept },
@@ -30,7 +37,7 @@ async function fetchWithBackoff(url: string, accept: string): Promise<Response |
       if (attempt === maxRetries) throw new Error(`Request failed: ${response.status} ${response.statusText}`)
       // Honor a numeric Retry-After (seconds, capped at 30); otherwise back off exponentially.
       const retryAfter = Number(response.headers.get("retry-after"))
-      const wait = retryAfter > 0 ? Math.min(retryAfter * 1000, 30000) : delay + Math.floor(Math.random() * 500)
+      const wait = retryAfter > 0 ? Math.min(retryAfter * 1000, 30000) : delay + Math.floor(Math.random() * delay)
       await new Promise((r) => setTimeout(r, wait))
       delay = Math.min(delay * 2, 8000)
       continue
@@ -42,8 +49,8 @@ async function fetchWithBackoff(url: string, accept: string): Promise<Response |
   throw new Error("Request failed after max retries")
 }
 
-export async function jsonFetch<T = unknown>(url: string): Promise<T | null> {
-  const r = await fetchWithBackoff(url, "application/json")
+export async function jsonFetch<T = unknown>(url: string, retry?: RetryPolicy): Promise<T | null> {
+  const r = await fetchWithBackoff(url, "application/json", retry)
   return r ? ((await r.json()) as T) : null
 }
 
@@ -98,7 +105,12 @@ export function parseJobRef(input: string, board?: string): JobRef | null {
   if (parsed.hostname.toLowerCase() === "jobs.ashbyhq.com") {
     const m = parsed.pathname.match(/^\/([^/]+)\/([0-9a-f-]{36})(?:\/application)?\/?$/i)
     if (!m) return null
-    const urlBoard = decodeURIComponent(m[1])
+    let urlBoard: string
+    try {
+      urlBoard = decodeURIComponent(m[1])
+    } catch {
+      return null // malformed percent-encoding
+    }
     if (!isValidBoard(urlBoard) || !isJobId(m[2])) return null
     if (board && board.toLowerCase() !== urlBoard.toLowerCase()) return null
     return { board: urlBoard, id: m[2].toLowerCase() }
@@ -317,11 +329,19 @@ export function matchesWorkplace(card: JobCard, mode: string | undefined): boole
   return false
 }
 
+/** Clock-skew allowance for a publish date slightly ahead of this machine's clock. */
+const FUTURE_SKEW_MS = 60 * 60 * 1000
+
+/**
+ * Published within N days. A date further in the future than the skew
+ * allowance fails, rather than passing every cutoff with a negative age.
+ */
 export function withinDays(date: string | null, days: number | undefined, now: Date = new Date()): boolean {
   if (days === undefined) return true
   const t = date ? Date.parse(date) : NaN
   if (Number.isNaN(t)) return false
-  return now.getTime() - t <= days * 86_400_000
+  const age = now.getTime() - t
+  return age >= -FUTURE_SKEW_MS && age <= days * 86_400_000
 }
 
 export function formatMoney(n: number | null, currency: string | null): string {
@@ -360,7 +380,10 @@ export function decodeHtmlEntities(text: string): string {
       const hex = name[1] === "x" || name[1] === "X"
       return numericEntity(parseInt(name.slice(hex ? 2 : 1), hex ? 16 : 10))
     }
-    return NAMED_ENTITIES[name] ?? NAMED_ENTITIES[name.toLowerCase()] ?? whole
+    for (const key of [name, name.toLowerCase()]) {
+      if (Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, key)) return NAMED_ENTITIES[key]
+    }
+    return whole
   })
 }
 

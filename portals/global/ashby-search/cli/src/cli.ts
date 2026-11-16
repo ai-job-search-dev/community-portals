@@ -12,13 +12,17 @@ interface Flags {
   [k: string]: string | boolean | string[]
 }
 
-function parseFlags(argv: string[]): Flags {
+/** Parse argv; `repeated` names the first flag given more than once (aliases count as the same flag). */
+function parseFlags(argv: string[]): { flags: Flags; repeated: string | null } {
   const flags: Flags = { _: [] }
+  let repeated: string | null = null
   const alias: Record<string, string> = { q: "query", l: "location", n: "limit", b: "board" }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a.startsWith("-")) {
-      const key = alias[a.replace(/^-+/, "")] ?? a.replace(/^-+/, "")
+      const name = a.replace(/^-+/, "")
+      const key = Object.prototype.hasOwnProperty.call(alias, name) ? alias[name] : name
+      if (repeated === null && Object.prototype.hasOwnProperty.call(flags, key)) repeated = key
       const next = argv[i + 1]
       if (next === undefined || next.startsWith("-")) {
         flags[key] = true
@@ -30,7 +34,7 @@ function parseFlags(argv: string[]): Flags {
       ;(flags._ as string[]).push(a)
     }
   }
-  return flags
+  return { flags, repeated }
 }
 
 const MAX_BOARDS = 25
@@ -74,7 +78,7 @@ function fail(error: string, code = "BAD_ARG"): number {
 }
 
 async function main(): Promise<number> {
-  const flags = parseFlags(process.argv.slice(2))
+  const { flags, repeated } = parseFlags(process.argv.slice(2))
   const cmd = (flags._ as string[])[0]
 
   if (!cmd || flags.help || flags.h) {
@@ -82,7 +86,7 @@ async function main(): Promise<number> {
     return cmd ? 0 : 1
   }
 
-  const knownFlags = KNOWN_FLAGS[cmd]
+  const knownFlags = Object.prototype.hasOwnProperty.call(KNOWN_FLAGS, cmd) ? KNOWN_FLAGS[cmd] : undefined
   if (!knownFlags) return fail(`Unknown command "${cmd}"`, "BAD_CMD")
   for (const key of Object.keys(flags)) {
     if (key === "_" || knownFlags.has(key)) continue
@@ -91,6 +95,9 @@ async function main(): Promise<number> {
       "UNKNOWN_FLAG",
     )
   }
+
+  // A repeated flag would otherwise keep only its last value.
+  if (repeated) return fail(`--${repeated} was given more than once; pass it once`)
 
   // A stray word (e.g. an unquoted multi-word --query) would otherwise be dropped silently.
   const extra = (flags._ as string[]).slice(cmd === "detail" ? 2 : 1)
@@ -156,11 +163,15 @@ async function main(): Promise<number> {
   return runDetail(opts)
 }
 
+// Set the exit code and let the process end on its own, so piped stdout is fully
+// drained first (process.exit can cut off a large detail write).
 main()
-  .then((code) => process.exit(code))
+  .then((code) => {
+    process.exitCode = code
+  })
   .catch((e) => {
     process.stderr.write(
       JSON.stringify({ error: e instanceof Error ? e.message : String(e), code: "INTERNAL_ERROR" }) + "\n",
     )
-    process.exit(1)
+    process.exitCode = 1
   })
