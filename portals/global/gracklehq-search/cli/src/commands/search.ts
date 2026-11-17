@@ -43,9 +43,12 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     let hasNext = first.hasNext
     let pagesRead = 1
     // Newest first: keep reading while the last card is still inside the window.
+    const kept = (list: JobCard[]) => list.filter((c) => startsAtWord(c.title, opts.query)).length
     while (autoPage && hasNext && pagesRead < MAX_AUTO_PAGES) {
       const lastAge = ageInDays(cards[cards.length - 1]?.date ?? null)
       if (lastAge === null || lastAge > (opts.jobage as number)) break
+      // Enough results for --limit already: no more pages.
+      if (opts.limit !== undefined && kept(cards) >= opts.limit) break
       await new Promise((r) => setTimeout(r, 1000))
       page++
       const next = parseJobs(await htmlFetch(buildUrl({ ...opts, page })))

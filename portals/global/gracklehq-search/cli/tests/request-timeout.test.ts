@@ -22,6 +22,6 @@ describe("htmlFetch request timeout", () => {
     await htmlFetch("https://gracklehq.com/jobs");
     expect(timeout).toHaveBeenCalledTimes(1);
     expect(timeout).toHaveBeenCalledWith(15000);
-    expect(init?.signal).toBe(timeout.mock.results[0].value);
+    expect(init?.signal).toBe(timeout.mock.results[0].value as AbortSignal);
   });
 });

@@ -32,6 +32,14 @@ describe("search through the real CLI with saved pages", () => {
     expect(parseJSON<SearchOut>(short.result).results).toEqual([])
   })
 
+  test("--limit stops the --jobage paging once enough results are kept", async () => {
+    const { result, requests } = await runWithRoutes(["search", "-q", "unity", "--jobage", "30", "--limit", "1"], {
+      [JOBS]: { file: "search-unity-p1.html" },
+    })
+    expect(parseJSON<SearchOut>(result).results).toHaveLength(1)
+    expect(requests).toHaveLength(1)
+  })
+
   test("an explicit --page reads exactly that page", async () => {
     const { result } = await runWithRoutes(["search", "-q", "unity", "--page", "2", "--jobage", "999"], {
       [JOBS]: { file: "search-unity-p2.html" },
@@ -70,6 +78,21 @@ describe("detail resolves the redirect without following it", () => {
       isActive: true,
     })
     expect(requests.map((r) => r.key)).toEqual(["gracklehq.com/rd/384925"])
+  })
+
+  test("a non-http(s) redirect target is refused", async () => {
+    const { result } = await runWithRoutes(["detail", "7"], {
+      "gracklehq.com/rd/7": { status: 302, location: "javascript:alert(1)" },
+    })
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stderr).code).toBe("DETAIL_FAILED")
+    expect(result.stdout).toBe("")
+  })
+
+  test("a block (403) is an error, not a removed job", async () => {
+    const { result } = await runWithRoutes(["detail", "8"], { "gracklehq.com/rd/8": { status: 403 } })
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stderr).code).toBe("DETAIL_FAILED")
   })
 
   test("a removed job exits 1 with NOT_FOUND", async () => {

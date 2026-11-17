@@ -39,13 +39,13 @@ resolves that link so the posting can be fetched from its source.
 bun run .agents/skills/gracklehq-search/cli/src/cli.ts search [-q "<title words>"] [flags]
 ```
 
-Query syntax: the board matches the query as one contiguous, case-insensitive substring of the job title only, so two words behave like an exact phrase with word order kept ("unity developer" 3 results, "developer unity" 0); quotes are dropped by the CLI (the board would treat them literally); the CLI then drops matches where the text only appears inside a longer word ("unity" in "Community"); no OR, no minus.
+Query syntax: the board matches the query as one contiguous, case-insensitive substring of the job title only, so two words behave like an exact phrase with word order kept ("unity developer" 3 results, "developer unity" 0); quotes and apostrophes are turned into spaces by the CLI (the board would treat quotes literally), so `designer's` is searched as `designer s`; the CLI then drops matches where the text only appears inside a longer word ("unity" in "Community"); no OR, no minus.
 
 Flags:
 - `--query <text>` / `-q <text>` - title substring, as above. Prefer short terms (`unity`, `gameplay`, `tools programmer`).
 - `--location <text>` / `-l <text>` - `Remote` (Grackle's remote metro area), or a country as Grackle spells it: `USA`, `UK`, `Canada`, `Uruguay`, `Brazil`, `Mexico`... A country Grackle has no jobs for returns 0; the sidebar on gracklehq.com/jobs lists the countries it currently knows.
 - `--department <text>` / `-d <text>` - `Engineering`, `Art`, `Design`, `Production`, `Quality Assurance`, `Business`, `IT`, `Audio`...
-- `--jobage <days>` - first seen by Grackle within N days (client-side). Without `--page`, the CLI follows Next while the newest-first list is still inside the window, up to 5 pages.
+- `--jobage <days>` - first seen by Grackle within N days (client-side). Cards whose age the CLI cannot read are kept. Without `--page`, the CLI follows Next while the newest-first list is still inside the window, up to 5 pages.
 - `--page <n>` - 1-indexed page, 30 results per page.
 - `--limit <n>` / `-n <n>` - cap results emitted.
 - `--format json|table|plain` - default `json`.

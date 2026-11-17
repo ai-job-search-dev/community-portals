@@ -202,15 +202,31 @@ export async function htmlFetch(url: string): Promise<string> {
   return response.text()
 }
 
-/** Resolve /rd/<id> without following it. Returns the Location, or null when the job is gone. */
-export async function resolveRedirect(url: string): Promise<string | null> {
+export type Resolved = { target: string } | { missing: true } | { error: string }
+
+/**
+ * Resolve /rd/<id> without following it. A 404 means Grackle removed the job;
+ * any other non-redirect answer (a 403 block, a 200 page) is reported as an
+ * error, not as a removed job. Only http(s) targets are returned.
+ */
+export async function resolveRedirect(url: string): Promise<Resolved> {
   const response = await withBackoff(url, "manual")
-  if (!response) return null
+  if (!response) return { missing: true }
   if (response.status >= 300 && response.status < 400) {
     const loc = response.headers.get("location")
-    return loc ? new URL(loc, url).href : null
+    if (!loc) return { error: `redirect without a Location header (${response.status})` }
+    let target: URL
+    try {
+      target = new URL(loc, url)
+    } catch {
+      return { error: "redirect to an unparsable URL" }
+    }
+    if (target.protocol !== "https:" && target.protocol !== "http:") {
+      return { error: `redirect to a non-http(s) URL (${target.protocol})` }
+    }
+    return { target: target.href }
   }
-  return null
+  return { error: `expected a redirect, got ${response.status} ${response.statusText}`.trim() }
 }
 
 export interface JobCard {

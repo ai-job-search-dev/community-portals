@@ -18,11 +18,16 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
   }
   try {
     const url = `${BASE_URL}/rd/${id}`
-    const target = await resolveRedirect(url)
-    if (!target) {
+    const resolved = await resolveRedirect(url)
+    if ("missing" in resolved) {
       writeError("Job not found (Grackle removes postings that are no longer on the careers page)", "NOT_FOUND")
       return 1
     }
+    if ("error" in resolved) {
+      writeError(`Could not resolve ${url}: ${resolved.error}`, "DETAIL_FAILED")
+      return 1
+    }
+    const target = resolved.target
     let host: string | null = null
     try {
       host = new URL(target).hostname

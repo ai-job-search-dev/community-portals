@@ -6,8 +6,9 @@ from studios' careers pages.
 **Data source**: the public, server-rendered `/jobs` list and the `/rd/<id>` redirect to
 each posting. See `../url-reference.md`.
 **Authentication**: None required.
-**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is optional
-and only pulls dev type definitions.
+**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is needed only
+for development: it installs the TypeScript compiler and `@types/bun` that `bun run typecheck`
+uses. Running the CLI needs nothing but `bun`.
 
 Grackle is a free, donation-funded public service. Keep volume low: one search per term,
 details only for promising hits. The CLI caps `--jobage` paging at 5 pages with a pause.
@@ -16,7 +17,7 @@ details only for promising hits. The CLI caps `--jobage` paging at 5 pages with 
 
 | Command | Description |
 |---------|-------------|
-| `search` | Title substring search, filtered by department, Remote/country and age |
+| `search` | Title search (the board matches a substring; the CLI keeps only hits that start at a word, so "unity" skips "Community"), filtered by department, Remote/country and age |
 | `detail` | Resolve a job id to the studio's posting URL (Grackle hosts no description) |
 
 `search` accepts `--format json|table|plain` (default `json`); `detail` accepts

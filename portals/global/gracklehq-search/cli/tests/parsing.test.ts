@@ -18,13 +18,13 @@ describe("parseJobs on captured result pages", () => {
   test("extracts id, title, company, location, age and URL", () => {
     expect(p1.results).toHaveLength(3)
     expect(p1.results[2]).toEqual({
-      id: p1.results[2].id,
+      id: "384565",
       title: "Engineering Manager (Unity)",
       company: "Scopely",
       location: "Barcelona, Spain",
       date: "2026-11-07",
       dateText: "10d",
-      url: `https://gracklehq.com/rd/${p1.results[2].id}`,
+      url: "https://gracklehq.com/rd/384565",
     })
     expect(p1.results[0].dateText).toBe("<1d")
     expect(p1.results[0].date).toBe("2026-11-17")
