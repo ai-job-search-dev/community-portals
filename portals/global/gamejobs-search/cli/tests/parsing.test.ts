@@ -8,6 +8,7 @@ import {
   parseDetail,
   parseSearch,
   relativeToDate,
+  safeLink,
   stripInvisible,
 } from "../src/helpers.ts"
 
@@ -112,6 +113,9 @@ describe("normalizeSlug", () => {
     expect(normalizeSlug("https://gamejobs.co@evil.io/Some-Job")).toBeNull()
     expect(normalizeSlug("https://gamejobs.co/jobs/1431041/save")).toBeNull()
     expect(normalizeSlug("search?q=unity")).toBeNull()
+    expect(normalizeSlug("https://gamejobs.co/search?q=unity")).toBeNull()
+    expect(normalizeSlug("Search-Engineer-at-Acme-12")).toBe("Search-Engineer-at-Acme-12")
+    expect(normalizeSlug("https://gamejobs.co/Search-Engineer-at-Acme-12")).toBe("Search-Engineer-at-Acme-12")
     expect(normalizeSlug("javascript:alert(1)")).toBeNull()
     expect(normalizeSlug("   ")).toBeNull()
   })
@@ -138,6 +142,21 @@ describe("parseDetail on the captured posting page", () => {
     expect(job.description).toContain("Excellente maîtrise d’Unity (C#)")
     expect(job.description).not.toContain("<li>")
   })
+  test("a validThrough in the past marks the posting closed", () => {
+    const later = parseDetail(fixture("detail-old-skull.html"), "x", new Date("2027-06-01T00:00:00Z"))
+    expect(later.isActive).toBe(false)
+  })
+})
+
+describe("safeLink", () => {
+  const base = "https://gamejobs.co/Some-Job-at-X-1"
+  test("resolves relative links and keeps http(s) only", () => {
+    expect(safeLink("/apply/1", base)).toBe("https://gamejobs.co/apply/1")
+    expect(safeLink("https://jobs.example.com/a?b=1&amp;c=2", base)).toBe("https://jobs.example.com/a?b=1&c=2")
+    expect(safeLink("javascript:alert(1)", base)).toBeNull()
+    expect(safeLink("data:text/html,x", base)).toBeNull()
+    expect(safeLink(null, base)).toBeNull()
+  })
 })
 
 describe("output hygiene", () => {
@@ -150,7 +169,7 @@ describe("output hygiene", () => {
   })
 
   test("invisible characters are stripped from parsed cards", () => {
-    const html = '<div class="job"><a class="title" href="/A-at-B">Uni​ty‮ Dev</a><div>· 1 day ago · <form></form></div></div>'
+    const html = '<div class="job"><a class="title" href="/A-at-B">Uni\u200Bty\u202E Dev</a><div>· 1 day ago · <form></form></div></div>'
     const [card] = stripInvisible(parseSearch(html, NOW).results)
     expect(card.title).toBe("Unity Dev")
   })

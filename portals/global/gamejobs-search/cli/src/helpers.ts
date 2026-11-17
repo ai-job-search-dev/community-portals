@@ -226,7 +226,7 @@ export interface JobDetail extends JobCard {
   deadline: string | null
   /** The external apply link the posting page points to, or null. */
   applyUrl: string | null
-  /** True when the posting page rendered; a removed posting returns 404 and never reaches here. */
+  /** False when the posting's validThrough has passed; a removed posting returns 404 and never reaches here. */
   isActive: boolean
 }
 
@@ -350,6 +350,22 @@ export function parseSearch(html: string, now: Date = new Date()): SearchPage {
  * A URL on any other host is rejected, so an apply link from another site never
  * gets fetched as if it were a GameJobs.co posting.
  */
+/** "search" is the board's search page, not a posting; any other slug (even "search-engineer-...") is fine. */
+function isReserved(slug: string): boolean {
+  return slug.toLowerCase() === "search"
+}
+
+/** Resolve an href against the posting URL and keep it only when it is http(s). */
+export function safeLink(href: string | null | undefined, base: string): string | null {
+  if (!href) return null
+  try {
+    const u = new URL(decodeHtmlEntities(href).trim(), base)
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : null
+  } catch {
+    return null
+  }
+}
+
 export function normalizeSlug(input: string): string | null {
   const trimmed = input.trim()
   if (!trimmed) return null
@@ -363,11 +379,11 @@ export function normalizeSlug(input: string): string | null {
     }
     if (!/^(www\.)?gamejobs\.co$/i.test(parsed.hostname)) return null
     const slug = slugFromHref(parsed.pathname)
-    return slug && !slug.includes("/") ? slug : null
+    return slug && !slug.includes("/") && !isReserved(slug) ? slug : null
   }
   if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return null
   const slug = slugFromHref(trimmed)
-  if (!slug || slug.includes("/") || slug.startsWith("search")) return null
+  if (!slug || slug.includes("/") || isReserved(slug)) return null
   return slug
 }
 
@@ -429,6 +445,7 @@ export function parseDetail(html: string, slug: string, now: Date = new Date()):
   }
 
   const posted = ld?.datePosted?.slice(0, 10) ?? null
+  const deadline = ld?.validThrough && /^\d{4}-\d\d-\d\d/.test(ld.validThrough) ? ld.validThrough.slice(0, 10) : null
   const employment = Array.isArray(ld?.employmentType) ? ld?.employmentType.join(", ") : ld?.employmentType
   return {
     id: slug,
@@ -441,8 +458,9 @@ export function parseDetail(html: string, slug: string, now: Date = new Date()):
     url: postingUrl(slug),
     description,
     employmentType: employment ? clean(employment) : null,
-    deadline: ld?.validThrough && /^\d{4}-\d\d-\d\d/.test(ld.validThrough) ? ld.validThrough.slice(0, 10) : null,
-    applyUrl: apply ? decodeHtmlEntities(apply) : null,
-    isActive: true,
+    deadline,
+    applyUrl: safeLink(apply, postingUrl(slug)),
+    // A page that rendered is listed; a validThrough in the past means it has closed.
+    isActive: (ageInDays(deadline, now) ?? 0) <= 0,
   }
 }

@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test"
+import { join } from "node:path"
+import { readFileSync, rmSync, writeFileSync } from "node:fs"
 import { parseJSON, runCLI, runWithFixture } from "./helpers.ts"
 
 interface SearchOut {
@@ -39,6 +41,23 @@ describe("search through the real CLI with a saved response", () => {
     expect(params.get("p")).toBe("2")
   })
 
+  test("--jobage drops cards older than the window and keeps undated ones", async () => {
+    // Fixture ages: 7 days, 10 days, 1 month. A copy turns the 10-day card's age
+    // into text the parser cannot read, so it has no date.
+    const undated = join(import.meta.dir, "fixtures", "search-unity-undated.tmp.html")
+    writeFileSync(undated, readFileSync(join(import.meta.dir, "fixtures", "search-unity.html"), "utf8").replace("10 days ago", "recently"))
+    try {
+      const { result } = await runWithFixture(["search", "-q", "unity", "--jobage", "8"], "search-unity-undated.tmp.html", isSearch)
+      const out = parseJSON<SearchOut>(result)
+      const ages = out.results.map((r) => r.dateText)
+      expect(ages).toContain("7 days ago")
+      expect(ages).toContain(null)
+      expect(ages).not.toContain("1 month ago")
+    } finally {
+      rmSync(undated, { force: true })
+    }
+  })
+
   test("table and plain formats render", async () => {
     const table = await runWithFixture(["search", "-q", "unity", "--format", "table"], "search-unity.html", isSearch)
     expect(table.result.exitCode).toBe(0)
@@ -77,6 +96,9 @@ describe("detail through the real CLI with a saved response", () => {
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain("Old Skull Games · Villeurbanne, France")
     expect(result.stdout).toContain("Valid through: 2027-05-15")
+    // Header, facts, description and URL stay separated by blank lines.
+    expect(result.stdout).toMatch(/Villeurbanne, France\n\nPosted:/)
+    expect(result.stdout).toMatch(/\n\nURL: /)
     expect(result.stdout).not.toContain("<p>")
   })
 

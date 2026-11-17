@@ -44,7 +44,7 @@ Query syntax: double quotes inside the argument make an exact phrase, word order
 Key flags:
 - `--query <text>` / `-q <text>` - keywords (title, skill, company). Recommended.
 - `--location <text>` / `-l <text>` - the board's "Where?" box: a city, state, country, or `Remote`.
-- `--jobage <days>` - posted within N days. The board only filters at 1, 7 or 31 days, so other values use the next window up and the CLI narrows to the exact age from each card's "N days ago". Months and years on the board are coarse ("1 month ago"), so dates older than ~4 weeks are approximate.
+- `--jobage <days>` - posted within N days. The board only filters at 1, 7 or 31 days, so values up to 31 use the next window up and the CLI narrows the fetched page to the exact age from each card's "N days ago". Values above 31 send no age filter at all: only the fetched page is narrowed, so pass `--page` to read further. Cards whose age the CLI cannot parse are kept (an unknown age is not evidence that a posting is old). Months and years on the board are coarse ("1 month ago"), so dates older than ~4 weeks are approximate.
 - `--page <n>` - page number (1-indexed, 100 results per page).
 - `--limit <n>` / `-n <n>` - cap total results emitted (client-side).
 - `--format json|table|plain` - default `json`.
@@ -87,7 +87,10 @@ bun run .agents/skills/gamejobs-search/cli/src/cli.ts detail Lead-Unity-Develope
 | `table` | Quick human-readable scanning |
 | `plain` | Reading a single posting (`detail`) or a short list |
 
-Search JSON is `{ "meta": { "count", "page", "total", "hasNext" }, "results": [...] }`; each
+Search JSON is `{ "meta": { "count", "page", "total", "hasNext" }, "results": [...] }`. `total` and
+`hasNext` are the board's own figures for the query; `count` is what this call emitted after
+`--jobage` narrowing and `--limit`, so `count: 0` with a large `total` means the page had no
+posting inside the window, not that nothing matches. Each
 result has `id`, `jobId`, `title`, `company`, `location`, `date`, `dateText` and `url`
 (missing values are `null`). All errors go to **stderr** as `{ "error": "...", "code": "..." }`
 with exit code `1`.

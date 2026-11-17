@@ -5,14 +5,15 @@ and remote.
 
 **Data source**: GameJobs.co public, server-rendered pages (`/search` and `/<slug>`).
 **Authentication**: None required.
-**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is optional
-and only pulls dev type definitions.
+**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is needed only
+for development: it installs the TypeScript compiler and `@types/bun` that `bun run typecheck`
+uses. Running the CLI needs nothing but `bun`.
 
 ## Installation
 
 ```bash
 cd .agents/skills/gamejobs-search/cli
-bun install   # optional - only installs TypeScript dev types
+bun install   # dev tooling: TypeScript and @types/bun, needed for typecheck
 ```
 
 ## Commands
@@ -41,7 +42,7 @@ bun run src/cli.ts detail Lead-Unity-Developer-at-Aristocrat-4757 --format plain
 |------|-------|-------------|
 | `--query` | `-q` | Keywords. `"..."` exact phrase, `OR` union, `-term` exclude. |
 | `--location` | `-l` | City, state, country, or `Remote`. |
-| `--jobage` | | Posted within N days (board filters at 1/7/31; narrowed client-side). |
+| `--jobage` | | Posted within N days (board filters at 1/7/31; the fetched page is narrowed client-side; cards with no parsable age are kept). |
 | `--page` | | 1-indexed page (100 results/page). |
 | `--limit` | `-n` | Cap results emitted. |
 | `--format` | | `json` (default), `table`, `plain`. |

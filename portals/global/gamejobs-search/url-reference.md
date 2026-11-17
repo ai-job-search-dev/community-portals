@@ -62,7 +62,8 @@ removed slug returns 404.
 
 ## Notes
 
-- Relative ages: `today`, `N hours ago`, `N days ago`, `1 month ago`, `N months ago`,
-  `1 year ago`. Months/years are coarse; the CLI approximates them as 30/365 days.
+- Relative ages: `just now`, `today`, `yesterday`, `N minutes ago`, `N hours ago`,
+  `N days ago`, `N weeks ago`, `1 month ago`, `N months ago`, `1 year ago` (`a`/`an` also
+  work as the number). Months/years are coarse; the CLI approximates them as 30/365 days.
 - Postings are in whatever language the studio wrote them (French, Chinese, ...).
 - No rate limit was hit during reconnaissance (~25 requests over a few minutes).

@@ -24,16 +24,16 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
         job.title,
         `${job.company || "—"} · ${job.location || "—"}`,
         "",
-        job.date ? `Posted: ${job.date}${job.dateText ? ` (${job.dateText})` : ""}` : "",
-        job.employmentType ? `Employment: ${job.employmentType}` : "",
-        job.deadline ? `Valid through: ${job.deadline}` : "",
+        job.date ? `Posted: ${job.date}${job.dateText ? ` (${job.dateText})` : ""}` : null,
+        job.employmentType ? `Employment: ${job.employmentType}` : null,
+        job.deadline ? `Valid through: ${job.deadline}` : null,
         `Status: ${job.isActive ? "ACTIVE" : "CLOSED / EXPIRED"}`,
         "",
         job.description || "(no description)",
         "",
         `URL: ${job.url}`,
-        job.applyUrl ? `Apply: ${job.applyUrl}` : "",
-      ].filter((l) => l !== "")
+        job.applyUrl ? `Apply: ${job.applyUrl}` : null,
+      ].filter((l): l is string => l !== null)
       process.stdout.write(lines.join("\n") + "\n")
     } else {
       process.stdout.write(JSON.stringify(job, null, 2) + "\n")
