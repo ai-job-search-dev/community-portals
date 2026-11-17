@@ -44,7 +44,7 @@ Key flags:
 - `--query <text>` / `-q <text>` - keywords, matched against the whole posting. Recommended.
 - `--category <slug>` / `-c <slug>` - one category: `programming`, `design`, `art-and-animation`, `production`, `quality-assurance`, `community-management`, `sales-marketing`, `music-sound-design`, `writing`, `voice-acting`, `business-analysis`. With `--query`, the two lists are intersected.
 - `--location <text>` / `-l <text>` - substring of the remote scope: `worldwide`, `europe`, `canada`, `utc`.
-- `--jobage <days>` - posted within N days. Dates come from the board's RSS feed (cards carry none); postings older than the feed are undated and kept.
+- `--jobage <days>` - posted within N days. Dates come from the board's RSS feed (cards carry none); postings older than the feed are undated and kept for any N, so `--jobage` narrows the dated postings only.
 - `--limit <n>` / `-n <n>` - cap total results emitted.
 - `--format json|table|plain` - default `json`.
 
@@ -88,7 +88,11 @@ bun run .agents/skills/remotegamejobs-search/cli/src/cli.ts detail skymap-games-
 | `table` | Quick scanning with remote scopes side by side |
 | `plain` | Reading entries with category, type, level and salary |
 
-Search JSON is `{ "meta": { "count", "page", "total", "hasNext" }, "results": [...] }`; each
+Search JSON is `{ "meta": { "count", "page", "total", "hasNext" }, "results": [...] }`. The board
+has no paging, so `page` is always 1 and `hasNext` always `false`; `count` below `total` means
+`--limit` cut the list. When the RSS feed fails and `--jobage` is not set, the search still
+succeeds with `date: null` everywhere, `meta.feedError` says why, and stderr carries a
+`FEED_UNAVAILABLE` warning; with `--jobage` the dates are required, so the search fails. Each
 result has `id`, `title`, `company`, `location` (remote scope), `date`, `url`, `category`,
 `tags` and `salary` (missing values are `null`). All errors go to **stderr** as
 `{ "error": "...", "code": "..." }` with exit code `1`.
@@ -100,6 +104,7 @@ result has `id`, `title`, `company`, `location` (remote scope), `date`, `url`, `
   also returns the structured `applicantLocation`.
 - `robots.txt` disallows only `/goto/` (the apply redirect). The skill prints that link for
   you to open and never requests it.
-- A search makes at most three requests: the search or category page (both when combined)
-  and the RSS feed for dates. The feed is skipped when nothing matched.
+- A search makes at most three requests, not counting retries on 429/5xx: the search or
+  category page (both when combined) and the RSS feed for dates. The feed is skipped when
+  nothing matched.
 - The CLI retries 429/5xx with exponential backoff and jitter.

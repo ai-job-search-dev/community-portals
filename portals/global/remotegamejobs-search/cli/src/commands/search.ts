@@ -72,7 +72,19 @@ function renderTable(cards: JobCard[]): string {
 export async function runSearch(opts: SearchOpts): Promise<number> {
   try {
     const cards = await collect(opts)
-    const dates = cards.length ? parseFeedDates(await textFetch(FEED_URL)) : new Map<string, string>()
+    // The feed only supplies dates. Without --jobage a feed failure is not worth
+    // failing the search for: dates stay null and the failure is reported.
+    let dates = new Map<string, string>()
+    let feedError: string | null = null
+    if (cards.length) {
+      try {
+        dates = parseFeedDates(await textFetch(FEED_URL))
+      } catch (e) {
+        if (opts.jobage !== undefined) throw e
+        feedError = e instanceof Error ? e.message : String(e)
+        writeError(`feed.rss unavailable, dates left null: ${feedError}`, "FEED_UNAVAILABLE")
+      }
+    }
     let out = stripInvisible(finish(cards, dates, opts))
     const total = out.length
     if (opts.limit !== undefined) out = out.slice(0, opts.limit)
@@ -92,7 +104,7 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
       )
     } else {
       process.stdout.write(
-        JSON.stringify({ meta: { count: out.length, page: 1, total, hasNext: false }, results: out }, null, 2) + "\n",
+        JSON.stringify({ meta: { count: out.length, page: 1, total, hasNext: false, ...(feedError ? { feedError } : {}) }, results: out }, null, 2) + "\n",
       )
     }
     return 0

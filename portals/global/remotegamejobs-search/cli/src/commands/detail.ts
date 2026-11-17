@@ -24,18 +24,18 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
         job.title,
         `${job.company || "—"}${job.category ? ` · ${job.category}` : ""}`,
         "",
-        job.location ? `Remote scope: ${job.location}` : "",
-        job.applicantLocation ? `Applicants from: ${job.applicantLocation}` : "",
-        job.tags.length ? `Type · level: ${job.tags.join(" · ")}` : "",
-        job.salary ? `Salary: ${job.salary}` : "",
-        job.date ? `Posted: ${job.date}` : "",
-        job.deadline ? `Valid through: ${job.deadline}` : "",
+        job.location ? `Remote scope: ${job.location}` : null,
+        job.applicantLocation ? `Applicants from: ${job.applicantLocation}` : null,
+        job.tags.length ? `Type · level: ${job.tags.join(" · ")}` : null,
+        job.salary ? `Salary: ${job.salary}` : null,
+        job.date ? `Posted: ${job.date}` : null,
+        job.deadline ? `Valid through: ${job.deadline}` : null,
         "",
         job.description || "(no description)",
         "",
         `URL: ${job.url}`,
-        job.applyUrl ? `Apply: ${job.applyUrl}` : "",
-      ].filter((l) => l !== "")
+        job.applyUrl ? `Apply: ${job.applyUrl}` : null,
+      ].filter((l): l is string => l !== null)
       process.stdout.write(lines.join("\n") + "\n")
     } else {
       process.stdout.write(JSON.stringify(job, null, 2) + "\n")

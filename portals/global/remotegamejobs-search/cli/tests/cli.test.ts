@@ -32,12 +32,13 @@ describe("search through the real CLI with saved responses", () => {
   })
 
   test("--query with --category intersects both lists", async () => {
+    // search: 3 cards; category: 1 of them plus 1 the search lacks. Only the shared card survives.
     const { result, requests } = await runWithFixtures(["search", "-q", "unity", "-c", "programming"], {
       "/search": "search-unity.html",
-      "/remote-game-programming-jobs": "search-unity.html",
+      "/remote-game-programming-jobs": "category-programming.html",
       "/feed.rss": "feed.rss",
     })
-    expect(parseJSON<SearchOut>(result).results).toHaveLength(3)
+    expect(parseJSON<SearchOut>(result).results.map((r) => r.id)).toEqual(["skymap-games-multiplayer-engineer-unity-remote-job"])
     expect(requests.map((r) => r.pathname).sort()).toEqual(["/feed.rss", "/remote-game-programming-jobs", "/search"])
   })
 
@@ -53,9 +54,27 @@ describe("search through the real CLI with saved responses", () => {
   })
 
   test("no matches skips the feed request", async () => {
-    const { result, requests } = await runWithFixtures(["search", "-q", "zzz"], { "/search": 404 })
+    const { result, requests } = await runWithFixtures(["search", "-q", "zzz"], { "/search": "search-empty.html" })
     expect(parseJSON<SearchOut>(result).results).toEqual([])
     expect(requests.map((r) => r.pathname)).toEqual(["/search"])
+  })
+
+  test("a 404 search page is an empty list too (documented 404 behaviour)", async () => {
+    const { result } = await runWithFixtures(["search", "-q", "zzz"], { "/search": 404 })
+    expect(parseJSON<SearchOut>(result).results).toEqual([])
+  })
+
+  test("a failing feed leaves dates null without --jobage, and fails the search with it", async () => {
+    const routes = { "/search": "search-unity.html", "/feed.rss": 403 }
+    const { result } = await runWithFixtures(["search", "-q", "unity"], routes)
+    const out = parseJSON<SearchOut & { meta: { feedError?: string } }>(result)
+    expect(out.results.length).toBe(3)
+    expect(out.results.every((r) => r.date === null)).toBe(true)
+    expect(out.meta.feedError).toContain("403")
+    expect(JSON.parse(result.stderr).code).toBe("FEED_UNAVAILABLE")
+    const strict = await runWithFixtures(["search", "-q", "unity", "--jobage", "14"], routes)
+    expect(strict.result.exitCode).toBe(1)
+    expect(JSON.parse(strict.result.stderr).code).toBe("SEARCH_FAILED")
   })
 })
 
@@ -81,6 +100,9 @@ describe("detail through the real CLI with saved responses", () => {
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain("Remote scope: Must be based in the province of Quebec, Canada")
     expect(result.stdout).not.toContain("<div>")
+    // Header, facts, description and URL stay separated by blank lines.
+    expect(result.stdout).toMatch(/\n\nRemote scope:/)
+    expect(result.stdout).toMatch(/\n\nURL: /)
   })
 
   test("a removed posting (404) is NOT_FOUND on stderr, exit 1", async () => {

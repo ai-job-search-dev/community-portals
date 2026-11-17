@@ -12,7 +12,7 @@ export interface CLIResult {
 }
 
 export async function runCLI(args: string[], preload = NO_NETWORK): Promise<CLIResult> {
-  const proc = Bun.spawn(["bun", "run", "--preload", preload, CLI_PATH, ...args], {
+  const proc = Bun.spawn([process.execPath, "run", "--preload", preload, CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -37,6 +37,8 @@ export async function runWithFixtures(
   routes: Record<string, string | number>,
 ): Promise<{ result: CLIResult; requests: URL[] }> {
   const requests: URL[] = [];
+  const dir = mkdtempSync(join(tmpdir(), "remotegamejobs-fixture-"));
+  const preload = join(dir, "fetch.ts");
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -50,20 +52,18 @@ export async function runWithFixtures(
       });
     },
   });
-  const dir = mkdtempSync(join(tmpdir(), "remotegamejobs-fixture-"));
-  const preload = join(dir, "fetch.ts");
-  writeFileSync(preload, `
-    const originalFetch = globalThis.fetch;
-    const allowed = ${JSON.stringify(Object.keys(routes))};
-    globalThis.fetch = (input, init) => {
-      const url = new URL(input instanceof Request ? input.url : String(input));
-      if (url.origin !== "https://remotegamejobs.com" || !allowed.includes(url.pathname)) {
-        throw new Error("Unexpected fixture request: " + url.href);
-      }
-      return originalFetch(${JSON.stringify(server.url.origin)} + url.pathname + url.search, init);
-    };
-  `);
   try {
+    writeFileSync(preload, `
+      const originalFetch = globalThis.fetch;
+      const allowed = ${JSON.stringify(Object.keys(routes))};
+      globalThis.fetch = (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.origin !== "https://remotegamejobs.com" || !allowed.includes(url.pathname)) {
+          throw new Error("Unexpected fixture request: " + url.href);
+        }
+        return originalFetch(${JSON.stringify(server.url.origin)} + url.pathname + url.search, init);
+      };
+    `);
     return { result: await runCLI(args, preload), requests };
   } finally {
     server.stop(true);

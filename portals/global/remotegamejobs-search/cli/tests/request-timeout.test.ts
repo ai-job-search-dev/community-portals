@@ -22,6 +22,6 @@ describe("textFetch request timeout", () => {
     await textFetch("https://remotegamejobs.com/x");
     expect(timeout).toHaveBeenCalledTimes(1);
     expect(timeout).toHaveBeenCalledWith(15000);
-    expect(init?.signal).toBe(timeout.mock.results[0].value);
+    expect(init?.signal).toBe(timeout.mock.results[0].value as AbortSignal);
   });
 });

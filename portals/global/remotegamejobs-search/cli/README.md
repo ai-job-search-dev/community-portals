@@ -6,8 +6,9 @@ CLI for searching remote-only games-industry jobs on
 **Data source**: the board's public, server-rendered pages (`/search`, category pages,
 `/jobs/<slug>`) and its RSS feed (`/feed.rss`, for dates).
 **Authentication**: None required.
-**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is optional
-and only pulls dev type definitions.
+**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is needed only
+for development: it installs the TypeScript compiler and `@types/bun` that `bun run typecheck`
+uses. Running the CLI needs nothing but `bun`.
 
 > **Personal use only.** The board's terms license its content for personal,
 > non-commercial use. Keep volume low and don't use this commercially or for bulk
@@ -38,8 +39,8 @@ bun run src/cli.ts detail skymap-games-multiplayer-engineer-unity-remote-job --f
 |------|-------|-------------|
 | `--query` | `-q` | Full-text keywords (all words must match; quotes ignored). |
 | `--category` | `-c` | `programming`, `design`, `art-and-animation`, ... |
-| `--location` | `-l` | Substring of the remote scope: `worldwide`, `europe`, `canada`. |
-| `--jobage` | | Posted within N days (dates from the RSS feed). |
+| `--location` | `-l` | Substring of the remote scope: `worldwide`, `europe`, `canada`, `utc`. |
+| `--jobage` | | Posted within N days (dates from the RSS feed; postings the feed doesn't cover have `date: null` and are kept). |
 | `--limit` | `-n` | Cap results emitted. |
 | `--format` | | `json` (default), `table`, `plain`. |
 

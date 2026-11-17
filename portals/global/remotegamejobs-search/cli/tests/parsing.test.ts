@@ -128,7 +128,7 @@ describe("output hygiene", () => {
   })
 
   test("invisible characters are stripped from parsed cards", () => {
-    const html = '<a title="x" class="card" href="/jobs/a-b"><h3>Uni​ty Dev‮</h3></a>'
+    const html = '<a title="x" class="card" href="/jobs/a-b"><h3>Uni\u200Bty Dev\u202E</h3></a>'
     expect(stripInvisible(parseCards(html))[0].title).toBe("Unity Dev")
   })
 })
