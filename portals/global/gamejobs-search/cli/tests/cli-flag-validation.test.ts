@@ -28,7 +28,27 @@ describe("argument handling", () => {
   });
 
   test("a known flag after a value flag is still a flag", async () => {
-    expectError(await runCLI(["search", "-q", "--format", "json"]), "BAD_ARG");
+    // If --format were swallowed as the query, the leftover "json" would also be
+    // BAD_ARG; the message pins which error it is.
+    const result = await runCLI(["search", "-q", "--format", "json"]);
+    expectError(result, "BAD_ARG");
+    expect(result.stderr).toContain("--query requires a non-empty value");
+  });
+
+  test("an unknown or misspelled flag after a value flag is rejected, not taken as the value", async () => {
+    expectError(await runCLI(["search", "-q", "--categorie", "x"]), "UNKNOWN_FLAG");
+    expectError(await runCLI(["search", "-l", "-worldwide"]), "UNKNOWN_FLAG");
+  });
+
+  test("--__proto__ is rejected like any other unknown flag", async () => {
+    expectError(await runCLI(["search", "--__proto__=x"]), "UNKNOWN_FLAG");
+    expectError(await runCLI(["search", "--constructor", "x"]), "UNKNOWN_FLAG");
+  });
+
+  test("--help without a command prints usage and exits 0", async () => {
+    const result = await runCLI(["--help"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("USAGE");
   });
 
   test("inherited object keys are not commands", async () => {

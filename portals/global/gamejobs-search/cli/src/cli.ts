@@ -13,16 +13,24 @@ interface Flags {
 
 const ALIAS: Record<string, string> = { q: "query", l: "location", n: "limit" }
 
-/** A token is a flag only when it names one this CLI knows; "-mobile" after -q is a value. */
-function isFlagToken(token: string): boolean {
-  if (!token.startsWith("-") || token.length < 2) return false
-  const raw = token.split("=")[0].replace(/^-+/, "")
-  const key = Object.hasOwn(ALIAS, raw) ? ALIAS[raw] : raw
-  return Object.values(KNOWN_FLAGS).some((set) => set.has(key))
+/**
+ * After --query only, a single-dash word that is not one of this CLI's flags is
+ * the value: `-q -mobile` searches for "-mobile" (an exclusion). Everywhere else
+ * a token starting with "-" is a flag, so a typo like `-q --categorie` or
+ * `-l -worldwide` is still rejected as an unknown flag.
+ */
+function isQueryValue(key: string, token: string): boolean {
+  if (key !== "query" || !/^-[^-]/.test(token)) return false
+  const raw = token.split("=")[0].slice(1)
+  const name = Object.hasOwn(ALIAS, raw) ? ALIAS[raw] : raw
+  return !Object.values(KNOWN_FLAGS).some((set) => set.has(name))
 }
 
 function parseFlags(argv: string[]): Flags {
-  const flags: Flags = { _: [] }
+  // No prototype: a user-supplied key like "__proto__" becomes an own property,
+  // so the unknown-flag check sees it.
+  const flags = Object.create(null) as Flags
+  flags._ = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a.startsWith("-") && a.length > 1) {
@@ -34,7 +42,7 @@ function parseFlags(argv: string[]): Flags {
         continue
       }
       const next = argv[i + 1]
-      if (BOOLEAN_FLAGS.has(key) || next === undefined || isFlagToken(next)) {
+      if (BOOLEAN_FLAGS.has(key) || next === undefined || (next.startsWith("-") && !isQueryValue(key, next))) {
         flags[key] = true
       } else {
         flags[key] = next
@@ -99,7 +107,8 @@ async function main(): Promise<number> {
 
   if (!cmd || flags.help || flags.h) {
     process.stdout.write(HELP)
-    if (cmd) return 0
+    // An explicit --help is a success; only a bare invocation is an error.
+    if (cmd || flags.help || flags.h) return 0
     return badArg("no command given - use search or detail; see the usage above", "NO_COMMAND")
   }
 

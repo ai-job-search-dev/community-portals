@@ -345,11 +345,6 @@ export function parseSearch(html: string, now: Date = new Date()): SearchPage {
   return { total, hasNext, results }
 }
 
-/**
- * Accept a slug, a "/slug" path, or a gamejobs.co URL (with or without scheme).
- * A URL on any other host is rejected, so an apply link from another site never
- * gets fetched as if it were a GameJobs.co posting.
- */
 /** "search" is the board's search page, not a posting; any other slug (even "search-engineer-...") is fine. */
 function isReserved(slug: string): boolean {
   return slug.toLowerCase() === "search"
@@ -366,6 +361,11 @@ export function safeLink(href: string | null | undefined, base: string): string 
   }
 }
 
+/**
+ * Accept a slug, a "/slug" path, or a gamejobs.co URL (with or without scheme).
+ * A URL on any other host is rejected, so an apply link from another site never
+ * gets fetched as if it were a GameJobs.co posting.
+ */
 export function normalizeSlug(input: string): string | null {
   const trimmed = input.trim()
   if (!trimmed) return null
