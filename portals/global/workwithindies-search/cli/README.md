@@ -5,8 +5,9 @@ public RSS feed (the 100 newest postings, mostly remote).
 
 **Data source**: `https://www.workwithindies.com/careers/rss.xml`, and nothing else.
 **Authentication**: None required.
-**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is optional
-and only pulls dev type definitions.
+**Dependencies**: None (plain `bun` + `fetch` + regex parsing). `bun install` is needed only
+for development: it installs the TypeScript compiler and `@types/bun` that `bun run typecheck`
+uses. Running the CLI needs nothing but `bun`.
 
 > **Feed only.** The board's terms forbid scraping, so this CLI never fetches or parses the
 > site's HTML pages. Search covers the newest 100 postings; `detail` returns the feed
@@ -39,7 +40,7 @@ bun run src/cli.ts detail creature-unity-gameplay-tools-programmer --format plai
 | `--query` | `-q` | Keywords, client-side: all words, `"phrase"`, `-exclude`. |
 | `--category` | `-c` | Category slug: `programming`, `design`, `art-animation`, ... |
 | `--location` | `-l` | Substring of where-from: `anywhere`, `europe`, `PT`. |
-| `--jobage` | | Posted within N days. |
+| `--jobage` | | Posted within N days. Items without a parsable date are kept. |
 | `--page` | | Page of the filtered list (25 per page). |
 | `--limit` | `-n` | Cap results emitted. |
 | `--format` | | `json` (default), `table`, `plain`. |

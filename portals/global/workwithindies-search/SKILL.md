@@ -48,7 +48,7 @@ Key flags:
 - `--query <text>` / `-q <text>` - keywords. Optional: with no query, every feed posting is a candidate.
 - `--category <slug>` / `-c <slug>` - only postings tagged with one category: `art-animation`, `audio`, `business`, `design`, `marketing`, `production`, `programming`, `qa-cs`, `writing`.
 - `--location <text>` / `-l <text>` - substring of where the job can be done from: `Anywhere`, `Europe`, `PT`, `Copenhagen`.
-- `--jobage <days>` - posted within N days.
+- `--jobage <days>` - posted within N days. Feed items without a parsable date are kept (an unknown date is not evidence that a posting is old).
 - `--page <n>` - page of the filtered list (25 per page; the feed itself has no paging).
 - `--limit <n>` / `-n <n>` - cap total results emitted.
 - `--format json|table|plain` - default `json`.

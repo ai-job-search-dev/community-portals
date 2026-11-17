@@ -3,6 +3,7 @@ import {
   FEED_URL,
   normalizeSlug,
   parseFeed,
+  postingUrl,
   textFetch,
   toDetail,
   writeError,
@@ -25,30 +26,35 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     return 1
   }
   try {
-    const card = parseFeed(await textFetch(FEED_URL)).find((c) => c.id === slug)
+    const feed = await textFetch(FEED_URL)
+    if (!feed) {
+      writeError(`The feed ${FEED_URL} is unavailable (404), so the posting cannot be looked up`, "FEED_UNAVAILABLE")
+      return 1
+    }
+    const card = stripInvisible(parseFeed(feed)).find((c) => c.id === slug)
     if (!card) {
       writeError(
-        "Not in the current feed (it holds the newest 100 postings). Open the posting URL to read it.",
+        `Not in the current feed (it holds the newest 100 postings). Open the posting URL to read it: ${postingUrl(slug)}`,
         "NOT_FOUND",
       )
       return 1
     }
-    const job = stripInvisible(toDetail(card))
+    const job = toDetail(card)
 
     if (opts.format === "plain") {
       const lines = [
         job.title,
         `${job.company || "—"} · ${job.location || "—"}`,
         "",
-        job.date ? `Posted: ${job.date}` : "",
-        job.employmentType ? `Employment: ${job.employmentType}` : "",
-        job.tags.length ? `Tags: ${job.tags.join(", ")}` : "",
+        job.date ? `Posted: ${job.date}` : null,
+        job.employmentType ? `Employment: ${job.employmentType}` : null,
+        job.tags.length ? `Tags: ${job.tags.join(", ")}` : null,
         "",
         job.description || "(no summary)",
         "",
         "(Feed summary only. The full description is on the posting page.)",
         `URL: ${job.url}`,
-      ].filter((l) => l !== "")
+      ].filter((l): l is string => l !== null)
       process.stdout.write(lines.join("\n") + "\n")
     } else {
       process.stdout.write(JSON.stringify(job, null, 2) + "\n")

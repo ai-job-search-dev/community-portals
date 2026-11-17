@@ -13,15 +13,30 @@ interface Flags {
   [k: string]: string | boolean | string[]
 }
 
+const ALIAS: Record<string, string> = { q: "query", l: "location", n: "limit", c: "category" }
+
+/** A token is a flag only when it names one this CLI knows; "-mobile" after -q is a value. */
+function isFlagToken(token: string): boolean {
+  if (!token.startsWith("-") || token.length < 2) return false
+  const raw = token.split("=")[0].replace(/^-+/, "")
+  const key = Object.hasOwn(ALIAS, raw) ? ALIAS[raw] : raw
+  return Object.values(KNOWN_FLAGS).some((set) => set.has(key))
+}
+
 function parseFlags(argv: string[]): Flags {
   const flags: Flags = { _: [] }
-  const alias: Record<string, string> = { q: "query", l: "location", n: "limit", c: "category" }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
-    if (a.startsWith("-")) {
-      const key = alias[a.replace(/^-+/, "")] ?? a.replace(/^-+/, "")
+    if (a.startsWith("-") && a.length > 1) {
+      const eq = a.indexOf("=")
+      const raw = (eq > 0 ? a.slice(0, eq) : a).replace(/^-+/, "")
+      const key = Object.hasOwn(ALIAS, raw) ? ALIAS[raw] : raw
+      if (eq > 0) {
+        flags[key] = a.slice(eq + 1)
+        continue
+      }
       const next = argv[i + 1]
-      if (next === undefined || next.startsWith("-")) {
+      if (BOOLEAN_FLAGS.has(key) || next === undefined || isFlagToken(next)) {
         flags[key] = true
       } else {
         flags[key] = next
@@ -65,6 +80,8 @@ EXAMPLES
 
 // Long-form flag names each command accepts (parseFlags resolves the short
 // aliases first). "help"/"h" pass so `search --help` still prints usage.
+const BOOLEAN_FLAGS = new Set(["help", "h"])
+
 const KNOWN_FLAGS: Record<string, Set<string>> = {
   search: new Set(["query", "category", "location", "jobage", "page", "limit", "format", "help", "h"]),
   detail: new Set(["format", "help", "h"]),
@@ -90,12 +107,13 @@ async function main(): Promise<number> {
 
   if (!cmd || flags.help || flags.h) {
     process.stdout.write(HELP)
-    return cmd ? 0 : 1
+    if (cmd) return 0
+    return badArg("no command given - use search or detail; see the usage above", "NO_COMMAND")
   }
 
   // Reject unknown flags instead of silently discarding them: a discarded
   // filter changes what the search returns with no error.
-  const known = KNOWN_FLAGS[cmd]
+  const known = Object.hasOwn(KNOWN_FLAGS, cmd) ? KNOWN_FLAGS[cmd] : undefined
   if (known) {
     for (const key of Object.keys(flags)) {
       if (key === "_" || known.has(key)) continue
@@ -105,6 +123,15 @@ async function main(): Promise<number> {
       )
     }
   }
+  // Leftover words are rejected too: `search unity` (no -q) or an unquoted
+  // second query word would otherwise be dropped and change the results.
+  const extra = (flags._ as string[]).slice(cmd === "detail" ? 2 : 1)
+  if (known && extra.length > 0) {
+    return badArg(
+      `unexpected argument "${extra[0]}" for '${cmd}' - quote multi-word values, e.g. -q "unity developer"; see --help`,
+    )
+  }
+
 
   if (cmd === "search") {
     for (const name of ["query", "category", "location"]) {
@@ -113,7 +140,7 @@ async function main(): Promise<number> {
       }
     }
     const category = typeof flags.category === "string" ? flags.category.trim().toLowerCase() : undefined
-    if (category && !(category in CATEGORIES)) {
+    if (category && !Object.hasOwn(CATEGORIES, category)) {
       return badArg(`--category must be one of ${Object.keys(CATEGORIES).join("|")}, got "${category}"`)
     }
     const fmt = flags.format !== undefined ? String(flags.format) : "json"
@@ -153,11 +180,15 @@ async function main(): Promise<number> {
   return badArg(`Unknown command "${cmd}"`, "BAD_CMD")
 }
 
+// exitCode, not process.exit(): exiting immediately can cut off stdout that is
+// still being written to a pipe.
 main()
-  .then((code) => process.exit(code))
+  .then((code) => {
+    process.exitCode = code
+  })
   .catch((e) => {
     process.stderr.write(
       JSON.stringify({ error: e instanceof Error ? e.message : String(e), code: "INTERNAL_ERROR" }) + "\n",
     )
-    process.exit(1)
+    process.exitCode = 1
   })

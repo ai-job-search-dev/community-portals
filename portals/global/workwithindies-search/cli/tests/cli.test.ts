@@ -42,9 +42,12 @@ describe("search through the real CLI with saved responses", () => {
     expect(plain.result.stdout).toContain("id: veelpoot-quest-designer")
   })
 
-  test("a missing feed (404) yields an empty list, not a crash", async () => {
+  test("a missing feed (404) is an error, not an empty result", async () => {
     const { result } = await runWithFixtures(["search"], { "/careers/rss.xml": 404 })
-    expect(parseJSON<SearchOut>(result).results).toEqual([])
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stderr).code).toBe("FEED_UNAVAILABLE")
+    const detail = await runWithFixtures(["detail", "veelpoot-quest-designer"], { "/careers/rss.xml": 404 })
+    expect(JSON.parse(detail.result.stderr).code).toBe("FEED_UNAVAILABLE")
   })
 })
 
@@ -65,6 +68,9 @@ describe("detail through the real CLI with saved responses", () => {
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain("Feed summary only")
     expect(result.stdout).toContain("Tags: Design, Freelance")
+    // Header, facts and summary stay separated by blank lines.
+    expect(result.stdout).toMatch(/\n\nPosted:/)
+    expect(result.stdout).toMatch(/Tags: Design, Freelance\n\n/)
   })
 
   test("a posting not in the feed is NOT_FOUND on stderr, exit 1", async () => {

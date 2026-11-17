@@ -195,6 +195,7 @@ export function writeError(error: string, code: string): void {
 export async function textFetch(url: string): Promise<string> {
   const maxRetries = 6
   let delay = 500
+  let redirects = 0
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, {
       headers: {
@@ -202,9 +203,21 @@ export async function textFetch(url: string): Promise<string> {
         Accept: "application/rss+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      redirect: "follow",
+      // Redirects are followed by hand, and only on the board's own host, so the
+      // feed-only CLI can never be sent to another site.
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     })
+    if (response.status >= 300 && response.status < 400) {
+      const next = response.headers.get("location")
+      const target = next ? new URL(next, url) : null
+      if (!target || target.hostname !== new URL(BASE_URL).hostname || ++redirects > 5) {
+        throw new Error(`Refusing redirect from ${url} to ${next ?? "(no location)"}`)
+      }
+      url = target.href
+      attempt--
+      continue
+    }
     if (response.status === 429 || response.status >= 500) {
       if (attempt === maxRetries) {
         throw new Error(`Request failed: ${response.status} ${response.statusText}`)
@@ -285,8 +298,8 @@ const feedText = (raw: string) => clean(decodeHtmlEntities(unCdata(raw)))
 /** Parse the RSS feed: one item per posting, each parsed on its own so a bad item cannot break the rest. */
 export function parseFeed(xml: string): JobCard[] {
   const results: JobCard[] = []
-  for (const item of xml.split(/<item>/i).slice(1)) {
-    const body = item.split(/<\/item>/i)[0]
+  for (const item of xml.split(/<item(?:\s[^>]*)?>/i).slice(1)) {
+    const body = item.split(/<\/item\s*>/i)[0]
     const link = tagValue(body, "link")
     const id = link ? slugFromUrl(unCdata(link)) : null
     const headline = tagValue(body, "title")
@@ -335,9 +348,11 @@ function hasTerm(hay: string, term: string): boolean {
  */
 export function matchesQuery(text: string, query: string | undefined): boolean {
   if (!query) return true
-  const phrases = [...query.matchAll(/"([^"]+)"/g)].map((m) => m[1].trim()).filter(Boolean)
-  const rest = query.replace(/"[^"]*"/g, " ").split(/\s+/).filter(Boolean)
-  const exclude = rest.filter((w) => w.startsWith("-") && w.length > 1).map((w) => w.slice(1))
+  const quoted = [...query.matchAll(/(-?)"([^"]+)"/g)].map((m) => ({ not: m[1] === "-", text: m[2].trim() }))
+  const phrases = quoted.filter((q) => q.text && !q.not).map((q) => q.text)
+  const excludedPhrases = quoted.filter((q) => q.text && q.not).map((q) => q.text)
+  const rest = query.replace(/-?"[^"]*"/g, " ").split(/\s+/).filter(Boolean)
+  const exclude = rest.filter((w) => w.startsWith("-") && w.length > 1).map((w) => w.slice(1)).concat(excludedPhrases)
   const include = rest.filter((w) => !w.startsWith("-"))
   return (
     phrases.every((p) => hasTerm(text, p)) &&

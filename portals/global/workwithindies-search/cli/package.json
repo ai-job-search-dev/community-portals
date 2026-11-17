@@ -1,7 +1,7 @@
 {
   "name": "workwithindies-cli",
   "version": "1.0.0",
-  "description": "CLI for searching indie game studio jobs on Work With Indies (public RSS feed, category and posting pages), mostly remote - no authentication, zero runtime dependencies.",
+  "description": "CLI for searching indie game studio jobs on Work With Indies (public RSS feed only), mostly remote - no authentication, zero runtime dependencies.",
   "type": "module",
   "main": "src/cli.ts",
   "bin": {

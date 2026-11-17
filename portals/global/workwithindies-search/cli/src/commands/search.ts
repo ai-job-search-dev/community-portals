@@ -58,7 +58,12 @@ function renderTable(cards: JobCard[]): string {
 
 export async function runSearch(opts: SearchOpts): Promise<number> {
   try {
-    const all = stripInvisible(parseFeed(await textFetch(FEED_URL)))
+    const feed = await textFetch(FEED_URL)
+    if (!feed) {
+      writeError(`The feed ${FEED_URL} is unavailable (404)`, "FEED_UNAVAILABLE")
+      return 1
+    }
+    const all = stripInvisible(parseFeed(feed))
     const filtered = filterCards(all, opts)
     const total = filtered.length
     const start = (opts.page - 1) * PAGE_SIZE

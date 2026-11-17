@@ -146,7 +146,7 @@ describe("output hygiene", () => {
 
   test("invisible characters are stripped from parsed items", () => {
     const xml =
-      "<item><title>Acme is hiring a Uni​ty Dev‮ to work from Anywhere</title>" +
+      "<item><title>Acme is hiring a Uni\u200Bty Dev\u202E to work from Anywhere</title>" +
       "<link>https://www.workwithindies.com/careers/acme-unity-dev</link><description>x</description></item>"
     expect(stripInvisible(parseFeed(xml))[0].title).toBe("Unity Dev")
   })
@@ -155,4 +155,18 @@ describe("output hygiene", () => {
 test("ageInDays counts whole days", () => {
   expect(ageInDays("2026-11-02", NOW)).toBe(14)
   expect(ageInDays(null)).toBeNull()
+})
+
+describe("review fixes", () => {
+  test('-"phrase" excludes the phrase instead of requiring it', () => {
+    const text = "Senior Gameplay Programmer · Acme · Anywhere"
+    expect(matchesQuery(text, '-"senior gameplay"')).toBe(false)
+    expect(matchesQuery(text, 'programmer -"lead gameplay"')).toBe(true)
+    expect(matchesQuery(text, '"senior gameplay"')).toBe(true)
+  })
+
+  test("item tags with attributes or trailing whitespace still parse", () => {
+    const feed = fixture("feed.xml").replace(/<item>/gi, '<item xml:lang="en">').replace(/<\/item>/gi, "</item >")
+    expect(parseFeed(feed).length).toBe(parseFeed(fixture("feed.xml")).length)
+  })
 })

@@ -12,7 +12,7 @@ export interface CLIResult {
 }
 
 export async function runCLI(args: string[], preload = NO_NETWORK): Promise<CLIResult> {
-  const proc = Bun.spawn(["bun", "run", "--preload", preload, CLI_PATH, ...args], {
+  const proc = Bun.spawn([process.execPath, "run", "--preload", preload, CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
