@@ -18,9 +18,11 @@ const ALIAS: Record<string, string> = { q: "query", l: "location", n: "limit", c
 
 /**
  * After --query only, a single-dash word that is not one of this CLI's flags is
- * the value: `-q -mobile` searches for "-mobile" (an exclusion). Everywhere else
- * a token starting with "-" is a flag, so a typo like `-q --categorie` or
- * `-l -worldwide` is still rejected as an unknown flag.
+ * the value: `-q -mobile` passes the text "-mobile" on as the query, and the
+ * Query syntax line in SKILL.md says what this board makes of it. Everywhere
+ * else a token starting with "-" is a flag, so a typo like `-q --categorie` or
+ * `-l -worldwide` is still rejected as an unknown flag. A negative number
+ * (`--page -1`) is always a value, so the number check can report it.
  */
 function isQueryValue(key: string, token: string): boolean {
   if (key !== "query" || !/^-[^-]/.test(token)) return false
@@ -45,7 +47,8 @@ function parseFlags(argv: string[]): Flags {
         continue
       }
       const next = argv[i + 1]
-      if (BOOLEAN_FLAGS.has(key) || next === undefined || (next.startsWith("-") && !isQueryValue(key, next))) {
+      const isValue = !next?.startsWith("-") || /^-\d/.test(next) || isQueryValue(key, next)
+      if (BOOLEAN_FLAGS.has(key) || next === undefined || !isValue) {
         flags[key] = true
       } else {
         flags[key] = next
