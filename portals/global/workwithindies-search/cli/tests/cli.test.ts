@@ -47,6 +47,7 @@ describe("search through the real CLI with saved responses", () => {
     expect(result.exitCode).toBe(1)
     expect(JSON.parse(result.stderr).code).toBe("FEED_UNAVAILABLE")
     const detail = await runWithFixtures(["detail", "veelpoot-quest-designer"], { "/careers/rss.xml": 404 })
+    expect(detail.result.exitCode).toBe(1)
     expect(JSON.parse(detail.result.stderr).code).toBe("FEED_UNAVAILABLE")
   })
 })

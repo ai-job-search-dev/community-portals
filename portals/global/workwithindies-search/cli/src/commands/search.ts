@@ -60,7 +60,7 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
   try {
     const feed = await textFetch(FEED_URL)
     if (!feed) {
-      writeError(`The feed ${FEED_URL} is unavailable (404)`, "FEED_UNAVAILABLE")
+      writeError(`The feed ${FEED_URL} is unavailable or empty (404 or no body)`, "FEED_UNAVAILABLE")
       return 1
     }
     const all = stripInvisible(parseFeed(feed))

@@ -28,7 +28,7 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
   try {
     const feed = await textFetch(FEED_URL)
     if (!feed) {
-      writeError(`The feed ${FEED_URL} is unavailable (404), so the posting cannot be looked up`, "FEED_UNAVAILABLE")
+      writeError(`The feed ${FEED_URL} is unavailable or empty (404 or no body), so the posting cannot be looked up`, "FEED_UNAVAILABLE")
       return 1
     }
     const card = stripInvisible(parseFeed(feed)).find((c) => c.id === slug)
