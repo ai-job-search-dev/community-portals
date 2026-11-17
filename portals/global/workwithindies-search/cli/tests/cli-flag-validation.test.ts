@@ -45,6 +45,12 @@ describe("argument handling", () => {
     expectError(await runCLI(["search", "--constructor", "x"]), "UNKNOWN_FLAG");
   });
 
+  test("a negative number reaches the number check instead of looking like a flag", async () => {
+    const result = await runCLI(["search", "--limit", "-1"]);
+    expectError(result, "BAD_ARG");
+    expect(result.stderr).toContain("--limit must be a whole number");
+  });
+
   test("--help without a command prints usage and exits 0", async () => {
     const result = await runCLI(["--help"]);
     expect(result.exitCode).toBe(0);
