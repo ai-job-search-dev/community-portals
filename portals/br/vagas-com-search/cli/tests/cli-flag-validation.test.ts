@@ -30,6 +30,9 @@ describe("vagas-com-cli argument validation", () => {
 
   test("an unknown command exits 1 with BAD_CMD", async () => {
     expectJsonError(await runCLI(["apply"]), "BAD_CMD");
+    for (const cmd of ["constructor", "__proto__", "toString"]) {
+      expectJsonError(await runCLI([cmd]), "BAD_CMD");
+    }
   });
 
   test("fractional, trailing-garbage and zero numbers exit 1 with BAD_ARG", async () => {

@@ -142,10 +142,34 @@ function isHiddenTag(attrs: string): boolean {
  * hands the model words the posting's reader never saw. CSS-only tricks
  * (off-screen, zero font size) need a renderer and are not caught here.
  */
+const RAW_TEXT_BLOCKS = new Set(["script", "style", "template", "noscript"])
+
+/**
+ * Remove <script>/<style>/<template>/<noscript> blocks. Tags are matched whole,
+ * quoted attributes included, so "<noscript>" written inside an attribute value
+ * is not taken for a real opener. An unclosed block runs to the end.
+ */
+function dropRawTextBlocks(src: string): string {
+  const tag = new RegExp(`<([a-zA-Z][a-zA-Z0-9-]*)${ATTRS}>`, "g")
+  const kept: string[] = []
+  let from = 0
+  let m: RegExpExecArray | null
+  while ((m = tag.exec(src)) !== null) {
+    const name = m[1].toLowerCase()
+    if (!RAW_TEXT_BLOCKS.has(name)) continue
+    kept.push(src.slice(from, m.index))
+    const close = new RegExp(`</${name}\s*>`, "gi")
+    close.lastIndex = tag.lastIndex
+    const c = close.exec(src)
+    from = c ? close.lastIndex : src.length
+    tag.lastIndex = from
+  }
+  kept.push(src.slice(from))
+  return kept.join("")
+}
+
 export function visibleHtml(html: string): string {
-  const src = html
-    .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
-    .replace(/<(script|style|template|noscript)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
+  const src = dropRawTextBlocks(html.replace(/<!--[\s\S]*?(?:-->|$)/g, ""))
   // One pass, collecting what is kept: slicing the string per hidden element
   // would make a page full of them quadratic.
   const open = new RegExp(`<([a-zA-Z][a-zA-Z0-9-]*)(\\s${ATTRS})?>`, "g")
@@ -232,17 +256,30 @@ function ddmmyyyy(d: Date): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
+/** A real calendar date: JavaScript would turn 31/02 into 3 March, so check the parts survive. */
+export function isValidDate(d: number, m: number, y: number): boolean {
+  const date = new Date(y, m - 1, d)
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
+}
+
+const UNIT_MS: Record<string, number> = { segundo: 1000, minuto: 60_000, hora: 3_600_000 }
+
 /**
  * Cards show either an absolute date ("04/11/2026") or, for recent postings, a
  * relative one ("Hoje", "Ontem", "Há 2 dias", "Há 5 horas"). Return both as
- * DD/MM/YYYY, so --jobage can filter recent postings too; anything else is null.
+ * DD/MM/YYYY, so --jobage can filter recent postings too; anything else,
+ * including an impossible date such as 31/02/2026, is null.
  */
 export function parseCardDate(text: string, now: Date = new Date()): string | null {
   const t = text.trim()
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(t)) return t
+  const abs = t.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (abs) return isValidDate(Number(abs[1]), Number(abs[2]), Number(abs[3])) ? t : null
   const day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const lower = t.toLowerCase()
-  if (lower === "hoje" || /^h[áa] \d+ (hora|minuto|segundo)s?$/.test(lower)) return ddmmyyyy(day)
+  if (lower === "hoje") return ddmmyyyy(day)
+  // "Há 5 horas" just after midnight is yesterday: subtract the interval, then take the date.
+  const ago = lower.match(/^h[áa] (\d+) (segundo|minuto|hora)s?$/)
+  if (ago) return ddmmyyyy(new Date(now.getTime() - Number(ago[1]) * UNIT_MS[ago[2]]))
   if (lower === "ontem") {
     day.setDate(day.getDate() - 1)
     return ddmmyyyy(day)

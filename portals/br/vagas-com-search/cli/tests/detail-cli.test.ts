@@ -48,6 +48,8 @@ describe("vagas-com-cli detail (saved posting page)", () => {
     const job = parseJSON<{ description: string }>(result);
     expect(job.description.split("\n").length).toBeGreaterThan(3);
     expect(job.description).not.toMatch(/\n{3,}/);
+    // Consecutive list items stay on their own lines.
+    expect(job.description).toMatch(/• Participar do desenvolvimento[^\n]*\n• Apoiar na correção/);
   });
 
   test("a delisted posting (redirected to a search page) exits 1 with NOT_FOUND", async () => {

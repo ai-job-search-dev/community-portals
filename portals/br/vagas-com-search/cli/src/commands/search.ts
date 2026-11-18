@@ -1,4 +1,4 @@
-import { BASE_URL, htmlFetch, parseJobCards, slugify, stripInvisible, writeError, type JobCard } from "../helpers.js"
+import { BASE_URL, htmlFetch, isValidDate, parseJobCards, slugify, stripInvisible, writeError, type JobCard } from "../helpers.js"
 
 export interface SearchOpts {
   query: string
@@ -28,7 +28,7 @@ function withinJobage(card: JobCard, days: number | undefined): boolean {
   if (days === undefined) return true
   if (!card.date) return false
   const [d, m, y] = card.date.split("/").map(Number)
-  if (!d || !m || !y) return false
+  if (!isValidDate(d, m, y)) return false
   const now = new Date()
   const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days).getTime()
   return new Date(y, m - 1, d).getTime() >= cutoff

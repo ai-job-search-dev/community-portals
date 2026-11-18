@@ -17,8 +17,16 @@ describe("parseCardDate", () => {
     expect(parseCardDate("Há 20 dias", now)).toBe("29/10/2026");
   });
 
+  test("an hour count that crosses midnight lands on the previous day", () => {
+    const earlyMorning = new Date(2026, 10, 18, 1, 0); // 18/11/2026 01:00
+    expect(parseCardDate("Há 5 horas", earlyMorning)).toBe("17/11/2026");
+    expect(parseCardDate("Há 30 minutos", earlyMorning)).toBe("18/11/2026");
+  });
+
   test("returns null for anything it cannot read", () => {
     expect(parseCardDate("", now)).toBeNull();
     expect(parseCardDate("recentemente", now)).toBeNull();
+    expect(parseCardDate("31/02/2026", now)).toBeNull();
+    expect(parseCardDate("00/11/2026", now)).toBeNull();
   });
 });

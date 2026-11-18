@@ -29,7 +29,7 @@ GET https://www.vagas.com.br/vagas-de-<query-slug>[-em-<city-slug>][?pagina=<n>]
   "load more" button, and by fetching `?pagina=2` directly (returns a distinct
   results page, HTTP 200).
 - No parameter was found for posting-age filtering — apply this client-side
-  against each card's `data-publicacao` date: `DD/MM/YYYY`, or for recent postings
+  against the date in each card's `span.data-publicacao` element: `DD/MM/YYYY`, or for recent postings
   a relative date (`Hoje`, `Ontem`, `Há 2 dias`, `Há 5 horas`) that the CLI converts.
 - A specific `query`+`city` combination can legitimately return zero results
   (the site tracks this itself: a `dataLayer.push` event

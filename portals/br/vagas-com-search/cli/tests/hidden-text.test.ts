@@ -23,6 +23,8 @@ const HIDDEN_MARKUP = [
   "<span hidden/>HIDDEN in a self-closed non-void</span>",
   "<span hidden><span/>HIDDEN nested</span>HIDDEN after a nested self-close</span>",
   '<p aria-hidden="true" title="a hidden gem">Visible despite the words.</p>',
+  "<noscript>HIDDEN noscript</noscript>",
+  '<span title="<noscript>">Visible after a quoted noscript.</span>',
 ].join("");
 const LEAKED = /HIDDEN|WordDocument|MsoNormal|alert/;
 const INVISIBLE_CHAR = /[\u{E0000}-\u{E007F}‮​⁦\u001B﻿]/u;
@@ -56,6 +58,7 @@ test("detail drops hidden markup and invisible characters, keeping the visible t
     expect(result.stdout).not.toMatch(LEAKED);
     expect(result.stdout).toContain("Visible intro.");
     expect(result.stdout).toContain("Visible despite the words.");
+    expect(result.stdout).toContain("Visible after a quoted noscript.");
     expect(result.stdout).toContain("Desenvolvedor de Software Jr");
   }
 });
