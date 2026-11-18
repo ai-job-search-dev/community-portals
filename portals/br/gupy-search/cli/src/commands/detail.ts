@@ -1,4 +1,4 @@
-import { htmlFetch, htmlToText, stripInvisible, writeError, type JobDetail } from "../helpers.js"
+import { decodeHtmlEntities, htmlFetch, htmlToText, stripInvisible, writeError, type JobDetail } from "../helpers.js"
 
 export interface DetailOpts {
   id: string
@@ -10,7 +10,19 @@ export interface DetailOpts {
 // full posting lives there. `detail` therefore takes the `url` field from a search
 // result and reads the job data embedded in that page.
 
-/** Only fetch Gupy-hosted career pages over HTTPS — never an arbitrary host. */
+/**
+ * Only Gupy-hosted job pages over HTTPS: never an arbitrary host, and only the
+ * /job/ and /jobs/ paths robots.txt allows (it disallows /companies and /candidates).
+ * Checked for the URL passed in and for every redirect hop.
+ */
+function isGupyJobUrl(url: URL): boolean {
+  return (
+    url.protocol === "https:" &&
+    /^[a-z0-9-]+\.gupy\.io$/i.test(url.hostname) &&
+    /^\/jobs?\//.test(url.pathname)
+  )
+}
+
 function parseJobUrl(input: string): URL | null {
   let url: URL
   try {
@@ -18,9 +30,7 @@ function parseJobUrl(input: string): URL | null {
   } catch {
     return null
   }
-  if (url.protocol !== "https:") return null
-  if (!/^[a-z0-9-]+\.gupy\.io$/i.test(url.hostname)) return null
-  return url
+  return isGupyJobUrl(url) ? url : null
 }
 
 /** /job/<base64 of {"jobId":N,...}> or /jobs/<N> → "N". */
@@ -77,23 +87,25 @@ function fromNextData(html: string, jobId: string | null, url: URL): JobDetail |
     const job =
       candidates.find((o) => jobId !== null && (String(o.id) === jobId || String(o.jobId) === jobId)) ?? candidates[0]
     if (!job) continue
-    const sections = ["description", "responsibilities", "prerequisites", "additionalInformation"]
+    // relevantExperiences is the page's "additional information" block (benefits and the like).
+    const sections = ["description", "responsibilities", "prerequisites", "relevantExperiences", "additionalInformation"]
       .map((k) => str(job[k]))
       .filter((v): v is string => v !== null)
       .map(htmlToText)
     const city = str(job.addressCity) ?? str(job.city)
     const state = str(job.addressState) ?? str(job.state)
     const workplaceType = str(job.workplaceType)
+    const careerPage = (job.careerPage ?? {}) as Json
     return {
       id: jobId ?? String(job.id ?? job.jobId ?? ""),
       title: (str(job.name) ?? str(job.title)) as string,
-      company: str(job.careerPageName) ?? str(job.companyName),
+      company: str(job.careerPageName) ?? str(careerPage.name) ?? str(job.companyName),
       location: workplaceType === "remote" ? "Remoto" : [city, state].filter(Boolean).join(", ") || null,
       date: str(job.publishedAt) ?? str(job.publishedDate),
       url: url.toString(),
       description: sections.join("\n\n") || null,
       workplaceType,
-      applicationDeadline: str(job.applicationDeadline),
+      applicationDeadline: str(job.applicationDeadline) ?? str(job.registerEndDate),
       applyUrl: url.toString(),
     }
   }
@@ -103,7 +115,8 @@ function fromNextData(html: string, jobId: string | null, url: URL): JobDetail |
 /** schema.org JobPosting, which career pages embed for search-engine job listings. */
 function fromJsonLd(html: string, jobId: string | null, url: URL): JobDetail | null {
   for (const body of scriptBodies(html, /type=["']application\/ld\+json["']/i)) {
-    const posting = [...objects(tryParse(body))].find((o) => o["@type"] === "JobPosting" && str(o.description))
+    // Gupy HTML-encodes this block ({&quot;@context&quot;:...}); plain JSON parses either way.
+    const posting = [...objects(tryParse(body) ?? tryParse(decodeHtmlEntities(body)))].find((o) => o["@type"] === "JobPosting" && str(o.description))
     if (!posting) continue
     const org = posting.hiringOrganization as Json | undefined
     const address = ([...objects(posting.jobLocation)].find((o) => o["@type"] === "PostalAddress") ?? {}) as Json
@@ -140,7 +153,7 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     return 1
   }
   try {
-    const html = await htmlFetch(url.toString())
+    const html = await htmlFetch(url.toString(), isGupyJobUrl)
     if (!html) {
       writeError("Job not found", "NOT_FOUND")
       return 1
@@ -154,17 +167,20 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     }
 
     if (opts.format === "plain") {
+      // Optional lines are added only when present, so the blank spacers stay.
+      const extras = [
+        detail.workplaceType ? `Workplace type: ${detail.workplaceType}` : null,
+        detail.applicationDeadline ? `Deadline: ${detail.applicationDeadline}` : null,
+      ].filter((l): l is string => l !== null)
       const lines = [
         detail.title,
         `${detail.company || "—"} · ${detail.location || "—"}`,
-        "",
-        detail.workplaceType ? `Workplace type: ${detail.workplaceType}` : "",
-        detail.applicationDeadline ? `Deadline: ${detail.applicationDeadline}` : "",
+        ...(extras.length ? ["", ...extras] : []),
         "",
         detail.description || "(no description)",
         "",
         `URL: ${detail.url}`,
-      ].filter((l) => l !== "")
+      ]
       process.stdout.write(lines.join("\n") + "\n")
     } else {
       process.stdout.write(JSON.stringify(detail, null, 2) + "\n")

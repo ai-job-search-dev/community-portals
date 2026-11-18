@@ -38,12 +38,16 @@ function buildUrl(opts: SearchOpts): string {
   return `${API_BASE}?${params.toString()}`
 }
 
-/** Gupy's API has no posting-age parameter, so jobage is applied client-side against publishedDate. */
+/**
+ * Gupy's API has no posting-age parameter, so jobage is applied client-side
+ * against publishedDate, to the page fetched. A job with a missing or
+ * unreadable date is dropped while the filter is on, since its age is unknown.
+ */
 function withinJobage(card: JobCard, days: number | undefined): boolean {
-  if (!days || days <= 0 || days >= 9999) return true
-  if (!card.date) return true
+  if (days === undefined) return true
+  if (!card.date) return false
   const posted = new Date(card.date).getTime()
-  if (isNaN(posted)) return true
+  if (isNaN(posted)) return false
   const cutoff = Date.now() - days * 86400 * 1000
   return posted >= cutoff
 }

@@ -37,7 +37,10 @@ Key flags:
   to zero results (see Notes).
 - `--remote <mode>` — `remote`, `hybrid`, or `onsite` (workplace-type filter).
 - `--jobage <days>` — posted within N days. Applied **client-side** (Gupy's API has no
-  posting-age parameter) against each job's `publishedDate`.
+  posting-age parameter) against each job's `publishedDate`, and only to the page that
+  was fetched: a page of older postings can come back empty even when later pages have
+  recent ones, so raise `--page` to look further. Jobs without a readable date are left
+  out while the filter is on.
 - `--page <n>` — page number (1-indexed, 10 results per page).
 - `--limit <n>` / `-n <n>` — cap total results emitted (client-side).
 - `--format json|table|plain` — default `json`.
@@ -77,7 +80,7 @@ bun run .agents/skills/gupy-search/cli/src/cli.ts detail "https://<empresa>.gupy
 
 | Format | Best for |
 |--------|----------|
-| `json` | Default — programmatic use, passing IDs to `detail` |
+| `json` | Default — programmatic use, passing each result's `url` to `detail` |
 | `table` | Quick human-readable scanning |
 | `plain` | Reading a single job's full detail (`detail` command) |
 
@@ -96,7 +99,8 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
   disallows nothing, and the company career pages (`<company>.gupy.io/robots.txt`) disallow
   only `/companies` and `/candidates` — `detail` reads `/job/...`. Gupy publishes no terms
   of use for the public job portal (only a candidate privacy notice, which says nothing about
-  automated access). The CLI identifies itself as `gupy-cli/1.0` and keeps to one request per
-  command.
+  automated access). The CLI identifies itself as `gupy-cli/1.0` and makes one request per
+  command; only a 429 or 5xx response is retried, up to six times with exponential
+  backoff, and `detail` follows a redirect only to another `https://<company>.gupy.io/job/` page.
 - Job IDs are numeric (e.g. `11602614`) and identify a job in results, but `detail` takes
   the result's `url`, not the id.

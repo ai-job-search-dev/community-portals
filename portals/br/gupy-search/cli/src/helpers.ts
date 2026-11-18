@@ -13,16 +13,19 @@ export function writeError(error: string, code: string): void {
 
 const UA = "Mozilla/5.0 (compatible; gupy-cli/1.0)"
 
-/** GET with exponential backoff on 429/5xx. Returns null on a 404. */
-async function fetchWithRetry(url: string, accept: string): Promise<Response | null> {
+const MAX_REDIRECTS = 5
+
+/** One URL, with exponential backoff on 429/5xx. Redirects are returned, not followed. */
+async function fetchOnce(url: URL, accept: string): Promise<Response> {
   const maxRetries = 6
   let delay = 500
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetch(url, {
+    const response = await fetch(url.toString(), {
       headers: {
         "User-Agent": UA,
         Accept: accept,
       },
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     })
     if (response.status === 429 || response.status >= 500) {
@@ -34,24 +37,51 @@ async function fetchWithRetry(url: string, accept: string): Promise<Response | n
       delay = Math.min(delay * 2, 8000)
       continue
     }
+    return response
+  }
+  throw new Error("Request failed after max retries")
+}
+
+/**
+ * GET with exponential backoff on 429/5xx. Returns null on a 404. Redirects
+ * are followed by hand, and only to URLs `allow` accepts: fetch's own
+ * following would let a validated URL hand the request to any host.
+ */
+async function fetchWithRetry(url: string, accept: string, allow: (url: URL) => boolean): Promise<Response | null> {
+  let current = new URL(url)
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const response = await fetchOnce(current, accept)
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("Location")
+      if (!location) throw new Error(`Request failed: ${response.status} redirect without a Location`)
+      const next = new URL(location, current)
+      if (!allow(next)) throw new Error(`Refusing to follow a redirect to ${next.origin}`)
+      current = next
+      continue
+    }
     if (response.status === 404) return null
     if (!response.ok) {
       throw new Error(`Request failed: ${response.status} ${response.statusText}`)
     }
     return response
   }
-  throw new Error("Request failed after max retries")
+  throw new Error(`Request failed: more than ${MAX_REDIRECTS} redirects`)
 }
 
-/** Fetch JSON with exponential backoff on 429/5xx. Returns null on a 404. */
+const sameOrigin = (origin: string) => (url: URL) => url.origin === origin
+
+/** Fetch JSON with exponential backoff on 429/5xx. Returns null on a 404. Redirects stay on the same origin. */
 export async function jsonFetch<T>(url: string): Promise<T | null> {
-  const response = await fetchWithRetry(url, "application/json")
+  const response = await fetchWithRetry(url, "application/json", sameOrigin(new URL(url).origin))
   return response ? ((await response.json()) as T) : null
 }
 
-/** Fetch an HTML page with exponential backoff on 429/5xx. Returns null on a 404. */
-export async function htmlFetch(url: string): Promise<string | null> {
-  const response = await fetchWithRetry(url, "text/html")
+/**
+ * Fetch an HTML page with exponential backoff on 429/5xx. Returns null on a 404.
+ * Redirects are followed only to URLs `allow` accepts (default: the same origin).
+ */
+export async function htmlFetch(url: string, allow?: (url: URL) => boolean): Promise<string | null> {
+  const response = await fetchWithRetry(url, "text/html", allow ?? sameOrigin(new URL(url).origin))
   return response ? await response.text() : null
 }
 
@@ -103,9 +133,9 @@ function numericEntity(cp: number): string {
   return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ""
 }
 
-function decodeHtmlEntities(text: string): string {
+// &amp; goes last: decoding it first would turn "&amp;lt;" into "<" instead of "&lt;".
+export function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
@@ -115,6 +145,7 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#(\d+);/g, (_, dec) => numericEntity(parseInt(dec, 10)))
     .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, hex) => numericEntity(parseInt(hex, 16)))
     .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
 }
 
 /**
@@ -159,7 +190,8 @@ function isHiddenTag(attrs: string): boolean {
 
 /**
  * Drop markup a browser never renders - comments (including Word's
- * conditional ones), <script>/<style>/<template> blocks, and elements marked
+ * conditional ones), <script>/<style>/<template>/<noscript> blocks (a
+ * scripting-enabled browser never shows <noscript>), and elements marked
  * hidden - before tags are stripped. A plain tag strip keeps their text, which
  * hands the model words the posting's reader never saw. CSS-only tricks
  * (off-screen, zero font size) need a renderer and are not caught here.
@@ -167,7 +199,7 @@ function isHiddenTag(attrs: string): boolean {
 export function visibleHtml(html: string): string {
   const src = html
     .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
-    .replace(/<(script|style|template)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
+    .replace(/<(script|style|template|noscript)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
   // One pass, collecting what is kept: slicing the string per hidden element
   // would make a page full of them quadratic.
   const open = new RegExp(`<([a-zA-Z][a-zA-Z0-9-]*)(\\s${ATTRS})?>`, "g")

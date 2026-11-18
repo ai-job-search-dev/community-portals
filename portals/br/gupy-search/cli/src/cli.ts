@@ -57,6 +57,32 @@ EXAMPLES
   bun run src/cli.ts detail "https://<empresa>.gupy.io/job/<código>" --format plain
 `
 
+function writeArgError(error: string, code = "BAD_ARG"): number {
+  process.stderr.write(JSON.stringify({ error, code }) + "\n")
+  return 1
+}
+
+// Number(), not parseInt(): parseInt truncates, so "--page 1.5" read as 1 and
+// "--limit 10days" as 10. Whole numbers >= 1 only, as in the other portals.
+function parseIntFlag(name: string, raw: string | boolean | string[]): number | null {
+  const val = typeof raw === "string" ? Number(raw.trim()) : NaN
+  if (!Number.isInteger(val) || val < 1) {
+    writeArgError(`--${name} must be a whole number of at least 1, got "${raw}"`)
+    return null
+  }
+  return val
+}
+
+const REMOTE_MODES = ["remote", "hybrid", "onsite", "on-site"]
+
+// Long-form names each command accepts (parseFlags resolves q/l/n first).
+// Anything else exits 1: a discarded filter would change what the search
+// returns with no error.
+const KNOWN_FLAGS: Record<string, Set<string>> = {
+  search: new Set(["query", "location", "remote", "jobage", "page", "limit", "format", "help", "h"]),
+  detail: new Set(["format", "help", "h"]),
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2)
   const flags = parseFlags(argv)
@@ -67,62 +93,69 @@ async function main(): Promise<number> {
     return cmd ? 0 : 1
   }
 
+  const knownFlags = KNOWN_FLAGS[cmd]
+  if (!knownFlags) return writeArgError(`Unknown command "${cmd}"`, "BAD_CMD")
+  for (const key of Object.keys(flags)) {
+    if (key === "_" || knownFlags.has(key)) continue
+    return writeArgError(
+      `unknown flag --${key} for '${cmd}' - flags are never silently ignored, because a discarded filter changes what the search returns; see --help`,
+      "UNKNOWN_FLAG",
+    )
+  }
+
+  // An unquoted multi-word value ("-q desenvolvedor júnior") would otherwise
+  // search only its first word.
+  const extra = (flags._ as string[]).slice(cmd === "detail" ? 2 : 1)
+  if (extra.length > 0) {
+    return writeArgError(`unexpected argument "${extra[0]}" for '${cmd}'; quote multi-word values, see --help`)
+  }
+
   if (cmd === "search") {
-    const fmt = (flags.format as string) || "json"
-
-    const parseIntFlag = (name: string, raw: string | boolean | string[]): number | null => {
-      const val = parseInt(raw as string, 10)
-      if (isNaN(val)) {
-        process.stderr.write(JSON.stringify({ error: `--${name} must be a number, got "${raw}"`, code: "BAD_ARG" }) + "\n")
-        return null
+    // These options take values; a present-but-empty one would silently broaden the search.
+    for (const name of ["query", "location", "remote", "format"]) {
+      const value = flags[name]
+      if (value !== undefined && (typeof value !== "string" || !value.trim())) {
+        return writeArgError(`--${name} requires a non-empty value`)
       }
-      return val
+    }
+    const remote = flags.remote as string | undefined
+    if (remote !== undefined && !REMOTE_MODES.includes(remote.toLowerCase())) {
+      return writeArgError(`--remote must be one of remote|hybrid|onsite, got "${remote}"`)
     }
 
-    if (flags.jobage !== undefined) {
-      const v = parseIntFlag("jobage", flags.jobage)
-      if (v === null) return 1
-      flags.jobage = String(v)
+    const fmt = flags.format !== undefined ? String(flags.format) : "json"
+    if (!["json", "table", "plain"].includes(fmt)) {
+      return writeArgError(`--format must be one of json|table|plain, got "${fmt}"`)
     }
-    if (flags.page !== undefined) {
-      const v = parseIntFlag("page", flags.page)
+
+    const ints: Record<string, number | undefined> = {}
+    for (const name of ["jobage", "page", "limit"]) {
+      if (flags[name] === undefined) continue
+      const v = parseIntFlag(name, flags[name])
       if (v === null) return 1
-      flags.page = String(v)
-    }
-    if (flags.limit !== undefined) {
-      const v = parseIntFlag("limit", flags.limit)
-      if (v === null) return 1
-      flags.limit = String(v)
+      ints[name] = v
     }
 
     const opts: SearchOpts = {
-      query: typeof flags.query === "string" ? flags.query : undefined,
-      location: typeof flags.location === "string" ? flags.location : undefined,
-      remote: typeof flags.remote === "string" ? flags.remote : undefined,
-      jobage: flags.jobage ? parseInt(flags.jobage as string, 10) : undefined,
-      page: flags.page ? Math.max(1, parseInt(flags.page as string, 10)) : 1,
-      limit: flags.limit ? parseInt(flags.limit as string, 10) : undefined,
-      format: (["json", "table", "plain"].includes(fmt) ? fmt : "json") as SearchOpts["format"],
+      query: flags.query as string | undefined,
+      location: flags.location as string | undefined,
+      remote,
+      jobage: ints.jobage,
+      page: ints.page ?? 1,
+      limit: ints.limit,
+      format: fmt as SearchOpts["format"],
     }
     return runSearch(opts)
   }
 
-  if (cmd === "detail") {
-    const id = (flags._ as string[])[1]
-    if (!id) {
-      process.stderr.write(JSON.stringify({ error: "detail requires a job <url> from a search result", code: "NO_ID" }) + "\n")
-      return 1
-    }
-    const fmt = (flags.format as string) || "json"
-    const opts: DetailOpts = {
-      id,
-      format: (fmt === "plain" ? "plain" : "json") as DetailOpts["format"],
-    }
-    return runDetail(opts)
+  // detail
+  const id = (flags._ as string[])[1]
+  if (!id) return writeArgError("detail requires a job <url> from a search result", "NO_ID")
+  const fmt = flags.format !== undefined ? String(flags.format) : "json"
+  if (!["json", "plain"].includes(fmt)) {
+    return writeArgError(`--format must be one of json|plain, got "${fmt}"`)
   }
-
-  process.stderr.write(JSON.stringify({ error: `Unknown command "${cmd}"`, code: "BAD_CMD" }) + "\n")
-  return 1
+  return runDetail({ id, format: fmt as DetailOpts["format"] })
 }
 
 main().then((code) => process.exit(code))

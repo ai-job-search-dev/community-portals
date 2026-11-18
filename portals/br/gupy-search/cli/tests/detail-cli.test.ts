@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { parseJSON, runWithFixture, type FixtureRoute } from "./helpers";
 
 const JOB_URL =
@@ -25,10 +27,33 @@ describe("gupy-cli detail (saved career page)", () => {
     expect(job.url).toBe(JOB_URL);
   });
 
+  test("reads the company, deadline and additional-information block from the page data", async () => {
+    const { result } = await runWithFixture(["detail", JOB_URL], DETAIL);
+    const job = parseJSON<Record<string, string | null>>(result);
+    // careerPage.name, registerEndDate and relevantExperiences in the saved page.
+    expect(job.company).toBe("Quality Digital");
+    expect(job.applicationDeadline).toBe("2027-01-15");
+    expect(job.description).toContain("O que você vai encontrar");
+  });
+
+  test("falls back to the HTML-encoded JSON-LD block when the page data is missing", async () => {
+    const page = readFileSync(join(import.meta.dir, "fixtures", DETAIL.fixture), "utf-8");
+    const withoutNextData = page.replace(/<script id="__NEXT_DATA__"[\s\S]*?<\/script>/, "");
+    expect(withoutNextData).not.toContain("__NEXT_DATA__");
+    const { result } = await runWithFixture(["detail", JOB_URL], { ...DETAIL, body: withoutNextData });
+    const job = parseJSON<Record<string, string | null>>(result);
+    expect(job.title).toContain("DESENVOLVEDORA");
+    expect(job.description).toContain("Quality Digital");
+    expect(job.description).not.toMatch(/<\/?[a-z][^>]*>/i);
+  });
+
   test("plain format prints the title and URL", async () => {
     const { result } = await runWithFixture(["detail", JOB_URL, "--format", "plain"], DETAIL);
     expect(result.exitCode).toBe(0);
     expect(result.stdout.split("\n")[0]).toBe("PESSOA DESENVOLVEDORA SÊNIOR (BACK-END)");
     expect(result.stdout).toContain(`URL: ${JOB_URL}`);
+    // Blank lines separate the header, the description and the URL.
+    expect(result.stdout.split("\n")[2]).toBe("");
+    expect(result.stdout).toContain(`\n\nURL: ${JOB_URL}`);
   });
 });

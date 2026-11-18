@@ -84,7 +84,7 @@ test("search drops invisible characters from card text", async () => {
         workplaceType: "on-site",
       }],
       pagination: { total: 1, limit: 10, offset: 0 },
-    })) as typeof fetch;
+    })) as unknown as typeof fetch;
   let stdout = "";
   process.stdout.write = ((chunk: string | Uint8Array) => {
     stdout += chunk.toString();

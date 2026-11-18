@@ -17,8 +17,9 @@ c=()=>o().create({baseURL:r((0,n.nS)()?"http://portal-production-application.por
 `employability-portal.gupy.io` was the production API host reachable from outside the
 cluster until early October 2026, when `/api/v1/jobs` started answering a generic
 nginx 404. The portal now serves the same search from its own host at
-`https://portal.gupy.io/api/job-search/jobs`, with the same query parameters and the
-same `data`/`pagination` response wrapper. It is an internal portal address, not a
+`https://portal.gupy.io/api/job-search/jobs`, with equivalent filters (one renamed:
+the workplace filter is now the singular `workplaceType`; the old plural `workplaceTypes`
+is ignored) and the same `data`/`pagination` response wrapper. It is an internal portal address, not a
 documented API, so it may move again — see "Maintenance" below.
 
 ## Endpoints
@@ -117,7 +118,9 @@ data is server-rendered into the HTML. `detail` fetches the page and reads, in o
   only blog pagination/preview paths — irrelevant here since we never hit that host.
 - `https://<company>.gupy.io/robots.txt` (career pages, read by `detail`; checked
   2026-11-18 on `vagas.gupy.io`): `Allow: /`, `Disallow: /companies`, `Disallow: /candidates`.
-  Job pages live under `/job/...`, which is allowed.
+  Job pages live under `/job/...`, which is allowed. `detail` only fetches `/job/` and
+  `/jobs/` paths on an `https://<company>.gupy.io` host, and applies the same check to
+  every redirect before following it.
 - Terms: Gupy publishes no terms of use for the public job portal or for candidates
   (checked 2026-11-18: the gupy.io and portal.gupy.io footers link only privacy notices;
   the candidate privacy notice has no clause on automated access).
