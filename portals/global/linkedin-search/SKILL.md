@@ -66,7 +66,15 @@ bun run .agents/skills/linkedin-search/cli/src/cli.ts detail <id|url> [--format 
 
 `id` is the job ID from `search` results (e.g. `4426311357`). You may also pass a full
 LinkedIn `jobs/view/...` URL or a `urn:li:jobPosting:...` URN. Returns the full description,
-seniority, employment type, job function, and industries.
+seniority, employment type, job function, and industries, plus:
+
+- `applyState` - `open` (top card renders an Apply control), `closed` (LinkedIn's closed
+  banner), `likely-closed` (a job top card with neither; LinkedIn stopped showing the closed
+  banner to guests, so a missing Apply control is the remaining signal), or `unknown` (no job
+  top card recognised, e.g. a consent wall or changed title markup). `isActive` is `false` for `closed` and `likely-closed`.
+- `postedAgo` / `postedDaysAgo` - LinkedIn's own age text ("4 weeks ago", "Reposted 2 days
+  ago") and its lower-bound day count (week = 7, month = 30). This is the posting's age on
+  LinkedIn itself, more reliable than dates aggregators attach to LinkedIn postings they index.
 
 ## Usage examples
 
