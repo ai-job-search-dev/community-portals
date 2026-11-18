@@ -196,10 +196,34 @@ function isHiddenTag(attrs: string): boolean {
  * hands the model words the posting's reader never saw. CSS-only tricks
  * (off-screen, zero font size) need a renderer and are not caught here.
  */
+const RAW_TEXT_BLOCKS = new Set(["script", "style", "template", "noscript"])
+
+/**
+ * Remove <script>/<style>/<template>/<noscript> blocks. Tags are matched whole,
+ * quoted attributes included, so "<noscript>" written inside an attribute value
+ * is not taken for a real opener. An unclosed block runs to the end.
+ */
+function dropRawTextBlocks(src: string): string {
+  const tag = new RegExp(`<([a-zA-Z][a-zA-Z0-9-]*)${ATTRS}>`, "g")
+  const kept: string[] = []
+  let from = 0
+  let m: RegExpExecArray | null
+  while ((m = tag.exec(src)) !== null) {
+    const name = m[1].toLowerCase()
+    if (!RAW_TEXT_BLOCKS.has(name)) continue
+    kept.push(src.slice(from, m.index))
+    const close = new RegExp(`</${name}\s*>`, "gi")
+    close.lastIndex = tag.lastIndex
+    const c = close.exec(src)
+    from = c ? close.lastIndex : src.length
+    tag.lastIndex = from
+  }
+  kept.push(src.slice(from))
+  return kept.join("")
+}
+
 export function visibleHtml(html: string): string {
-  const src = html
-    .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
-    .replace(/<(script|style|template|noscript)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
+  const src = dropRawTextBlocks(html.replace(/<!--[\s\S]*?(?:-->|$)/g, ""))
   // One pass, collecting what is kept: slicing the string per hidden element
   // would make a page full of them quadratic.
   const open = new RegExp(`<([a-zA-Z][a-zA-Z0-9-]*)(\\s${ATTRS})?>`, "g")

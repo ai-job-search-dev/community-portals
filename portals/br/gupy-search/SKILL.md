@@ -101,6 +101,7 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
   of use for the public job portal (only a candidate privacy notice, which says nothing about
   automated access). The CLI identifies itself as `gupy-cli/1.0` and makes one request per
   command; only a 429 or 5xx response is retried, up to six times with exponential
-  backoff, and `detail` follows a redirect only to another `https://<company>.gupy.io/job/` page.
+  backoff, and `detail` follows a redirect only to another `https://<company>.gupy.io` page under
+  `/job/` or `/jobs/`.
 - Job IDs are numeric (e.g. `11602614`) and identify a job in results, but `detail` takes
   the result's `url`, not the id.

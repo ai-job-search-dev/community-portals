@@ -52,8 +52,13 @@ describe("gupy-cli detail (saved career page)", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.split("\n")[0]).toBe("PESSOA DESENVOLVEDORA SÊNIOR (BACK-END)");
     expect(result.stdout).toContain(`URL: ${JOB_URL}`);
-    // Blank lines separate the header, the description and the URL.
-    expect(result.stdout.split("\n")[2]).toBe("");
+    // Title, company line, blank, workplace type, deadline, blank, description ... blank, URL.
+    const lines = result.stdout.split("\n");
+    expect(lines[2]).toBe("");
+    expect(lines[3]).toBe("Workplace type: remote");
+    expect(lines[4]).toBe("Deadline: 2027-01-15");
+    expect(lines[5]).toBe("");
+    expect(lines[6]).not.toBe("");
     expect(result.stdout).toContain(`\n\nURL: ${JOB_URL}`);
   });
 });

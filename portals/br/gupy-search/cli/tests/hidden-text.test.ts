@@ -24,6 +24,8 @@ const HIDDEN_MARKUP = [
   "<span hidden/>HIDDEN in a self-closed non-void</span>",
   "<span hidden><span/>HIDDEN nested</span>HIDDEN after a nested self-close</span>",
   '<p aria-hidden="true" title="a hidden gem">Visible despite the words.</p>',
+  "<noscript>HIDDEN noscript</noscript>",
+  '<span title="<noscript>">Visible after a quoted noscript.</span>',
 ].join("");
 const LEAKED = /HIDDEN|WordDocument|MsoNormal|alert/;
 const INVISIBLE_CHAR = /[\u{E0000}-\u{E007F}‮​⁦\u001B﻿]/u;
@@ -44,6 +46,7 @@ test("description HTML drops hidden markup and keeps the visible text", () => {
   expect(text).not.toMatch(LEAKED);
   expect(text).toContain("Visible intro.");
   expect(text).toContain("Visible despite the words.");
+  expect(text).toContain("Visible after a quoted noscript.");
 });
 
 test("detail output drops invisible characters from every field", () => {
@@ -116,4 +119,5 @@ test("detail CLI cleans a hostile description in the saved career page", async (
   expect(job.description).not.toMatch(LEAKED);
   expect(job.description).toContain("Visible intro.");
   expect(job.description).toContain("Visible despite the words.");
+  expect(job.description).toContain("Visible after a quoted noscript.");
 });

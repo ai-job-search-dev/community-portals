@@ -93,7 +93,8 @@ async function main(): Promise<number> {
     return cmd ? 0 : 1
   }
 
-  const knownFlags = KNOWN_FLAGS[cmd]
+  // Own keys only: a command named "constructor" or "__proto__" must not resolve to Object.prototype.
+  const knownFlags = Object.hasOwn(KNOWN_FLAGS, cmd) ? KNOWN_FLAGS[cmd] : undefined
   if (!knownFlags) return writeArgError(`Unknown command "${cmd}"`, "BAD_CMD")
   for (const key of Object.keys(flags)) {
     if (key === "_" || knownFlags.has(key)) continue

@@ -23,9 +23,10 @@ function instantTimers(): number[] {
   return delays;
 }
 
-function stubFetch(responses: Array<() => Response>): { calls: number; userAgents: string[] } {
-  const state = { calls: 0, userAgents: [] as string[] };
-  globalThis.fetch = (async (_input: unknown, init?: RequestInit) => {
+function stubFetch(responses: Array<() => Response>): { calls: number; userAgents: string[]; urls: string[] } {
+  const state = { calls: 0, userAgents: [] as string[], urls: [] as string[] };
+  globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+    state.urls.push(String(input));
     state.userAgents.push(new Headers(init?.headers).get("User-Agent") ?? "");
     const i = Math.min(state.calls, responses.length - 1);
     state.calls++;
@@ -75,7 +76,7 @@ describe("jsonFetch / htmlFetch retry/backoff", () => {
     const ok = stubFetch([redirect("https://other.gupy.io/job/y"), () => new Response("<html>ok</html>")]);
     const allowGupy = (u: URL) => u.hostname.endsWith(".gupy.io");
     expect(await htmlFetch("https://example.gupy.io/job/x", allowGupy)).toBe("<html>ok</html>");
-    expect(ok.calls).toBe(2);
+    expect(ok.urls).toEqual(["https://example.gupy.io/job/x", "https://other.gupy.io/job/y"]);
 
     const bad = stubFetch([redirect("https://evil.example/steal"), () => new Response("<html>evil</html>")]);
     await expect(htmlFetch("https://example.gupy.io/job/x", allowGupy)).rejects.toThrow(/redirect/);
