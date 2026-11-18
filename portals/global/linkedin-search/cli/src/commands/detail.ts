@@ -1,4 +1,12 @@
 import { DETAIL_URL, htmlFetch, parseJobDetail, stripInvisible, writeError } from "../helpers.js"
+import type { ApplyState } from "../helpers.js"
+
+const STATUS_LABEL: Record<ApplyState, string> = {
+  open: "ACTIVE",
+  closed: "CLOSED / EXPIRED",
+  "likely-closed": "LIKELY CLOSED (no Apply button)",
+  unknown: "UNKNOWN (no job top card)",
+}
 
 export interface DetailOpts {
   id: string
@@ -66,7 +74,8 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
         job.employmentType ? `Employment: ${job.employmentType}` : "",
         job.jobFunction ? `Function: ${job.jobFunction}` : "",
         job.industries ? `Industries: ${job.industries}` : "",
-        `Status: ${job.isActive ? "ACTIVE" : "CLOSED / EXPIRED"}`,
+        `Status: ${STATUS_LABEL[job.applyState]}`,
+        job.postedAgo ? `Posted: ${job.postedAgo}` : "",
         "",
         job.description || "(no description)",
         "",

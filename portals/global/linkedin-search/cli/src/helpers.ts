@@ -63,7 +63,35 @@ export interface JobDetail extends JobCard {
   employmentType: string | null
   jobFunction: string | null
   industries: string | null
+  /** false when applyState is "closed" or "likely-closed"; see applyState. */
   isActive: boolean
+  /**
+   * "closed": the top card renders LinkedIn's closed banner.
+   * "open": the top card renders an Apply button.
+   * "likely-closed": a job top card rendered, but with neither banner nor
+   *   Apply button. LinkedIn stopped showing the closed banner to guests;
+   *   a missing Apply button is the remaining guest-visible signal.
+   * "unknown": no job top card at all (consent wall, markup drift).
+   */
+  applyState: ApplyState
+  /** LinkedIn's own relative age text, e.g. "4 weeks ago" / "Reposted 2 days ago". */
+  postedAgo: string | null
+  /** Lower-bound age in days parsed from postedAgo (week = 7, month = 30). */
+  postedDaysAgo: number | null
+}
+
+export type ApplyState = "open" | "closed" | "likely-closed" | "unknown"
+
+const AGE_UNIT_DAYS: Record<string, number> = {
+  second: 0, minute: 0, hour: 0, day: 1, week: 7, month: 30, year: 365,
+}
+
+/** Parse "3 weeks ago" / "Reposted 1 day ago" into a lower-bound day count. */
+export function parsePostedAgo(text: string | null): number | null {
+  if (!text) return null
+  const m = text.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i)
+  if (!m) return null
+  return Number(m[1]) * AGE_UNIT_DAYS[m[2].toLowerCase()]
 }
 
 /**
@@ -335,7 +363,20 @@ export function parseJobDetail(html: string, id: string): JobDetail {
   // so isActive: true means only "no closed banner found".
   const descStart = html.search(/class="(?:show-more-less-html__markup|description__text)/i)
   const topcard = descStart === -1 ? html : html.slice(0, descStart)
-  const isActive = !/closed-job__flavor|no longer accepting applications/i.test(topcard)
+  // Guest pages verified 2026-11-18: a closed posting no longer renders the
+  // banner, only drops the Apply button. An open posting carries one of:
+  //   onsite (Easy Apply): <button class="apply-button ..." data-tracking-control-name="public_jobs_apply-link-onsite">
+  //   offsite (employer ATS): <button class="sign-up-modal__outlet ..." data-modal="job-details-topcard-apply-modal">
+  //     plus "public_jobs_apply-link-offsite_..." tracking names in the sign-in modal.
+  let applyState: ApplyState
+  if (/closed-job__flavor|no longer accepting applications/i.test(topcard)) applyState = "closed"
+  else if (/class="[^"]*\bapply-button\b(?!_)|topcard-apply-modal|apply-link-(?:offsite|onsite)/i.test(topcard)) applyState = "open"
+  else if (/class="(?:top-card-layout__title|topcard__title)/i.test(topcard)) applyState = "likely-closed"
+  else applyState = "unknown"
+  const isActive = applyState === "open" || applyState === "unknown"
+
+  const agoMatch = topcard.match(/class="posted-time-ago__text[^"]*"[^>]*>([\s\S]*?)<\/span>/i)
+  const postedAgo = agoMatch ? clean(agoMatch[1]) || null : null
 
   return {
     id,
@@ -351,6 +392,9 @@ export function parseJobDetail(html: string, id: string): JobDetail {
     jobFunction: criteria["job function"] ?? null,
     industries: criteria["industries"] ?? null,
     isActive,
+    applyState,
+    postedAgo,
+    postedDaysAgo: parsePostedAgo(postedAgo),
   }
 }
 

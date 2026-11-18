@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { parseJobCards, parseJobDetail, extractDivContent, minutesToTPR } from "../src/helpers";
+import { parseJobCards, parseJobDetail, extractDivContent, minutesToTPR, parsePostedAgo } from "../src/helpers";
 import { normalizeId } from "../src/commands/detail";
 
 // Minimal search-card markup: parseJobCards splits on the job-posting URN and
@@ -108,16 +108,64 @@ describe("parseJobDetail active-status detection", () => {
     expect(job.isActive).toBe(false);
   });
 
+  // Guest pages render an Apply control on open postings (verified 2026-11-18).
+  const onsiteApply = `<button class="apply-button apply-button--default top-card-layout__cta" data-tracking-control-name="public_jobs_apply-link-onsite">Apply</button>`;
+  const offsiteApply = `<button class="sign-up-modal__outlet top-card-layout__cta" data-modal="job-details-topcard-apply-modal">Apply</button>`;
+  const ago = (text: string) => `<span class="posted-time-ago__text topcard__flavor--metadata">\n   ${text}\n </span>`;
+
   test("an open posting yields isActive: true", () => {
-    const job = parseJobDetail(page("", "We are hiring!"), "2");
+    const job = parseJobDetail(page(onsiteApply, "We are hiring!"), "2");
     expect(job.isActive).toBe(true);
+    expect(job.applyState).toBe("open");
+  });
+
+  test("an offsite-apply posting is open", () => {
+    const job = parseJobDetail(page(offsiteApply, "We are hiring!"), "2b");
+    expect(job.applyState).toBe("open");
+    expect(job.isActive).toBe(true);
+  });
+
+  test("a top card with neither banner nor Apply control is likely-closed", () => {
+    // LinkedIn stopped rendering the closed banner to guests; the only
+    // remaining signal on a closed posting is the missing Apply control.
+    const job = parseJobDetail(page("", "We are hiring!"), "2c");
+    expect(job.applyState).toBe("likely-closed");
+    expect(job.isActive).toBe(false);
+  });
+
+  test("a page with no job top card is unknown, not closed", () => {
+    const job = parseJobDetail(`<div>Sign in to continue</div>`, "2d");
+    expect(job.applyState).toBe("unknown");
+    expect(job.isActive).toBe(true);
+  });
+
+  test("Apply wording in the description does not mark a closed card open", () => {
+    const job = parseJobDetail(page("", '<a class="apply-button">Apply here</a>'), "2e");
+    expect(job.applyState).toBe("likely-closed");
+  });
+
+  test("a closed banner wins over an Apply control", () => {
+    const job = parseJobDetail(page(closedBanner + onsiteApply, "x"), "2f");
+    expect(job.applyState).toBe("closed");
+  });
+
+  test("posted age is read from the top card", () => {
+    const job = parseJobDetail(page(onsiteApply + ago("4 weeks ago"), "x"), "2g");
+    expect(job.postedAgo).toBe("4 weeks ago");
+    expect(job.postedDaysAgo).toBe(28);
+  });
+
+  test("a missing posted age is null", () => {
+    const job = parseJobDetail(page(onsiteApply, "x"), "2h");
+    expect(job.postedAgo).toBeNull();
+    expect(job.postedDaysAgo).toBeNull();
   });
 
   test("recruiter boilerplate in the description does not flag a live posting", () => {
     // The review's false-positive case: the closed phrase appears in the
     // *description text* of a job that is very much open.
     const job = parseJobDetail(
-      page("", "Apply soon - once filled, this posting is no longer accepting applications."),
+      page(onsiteApply, "Apply soon - once filled, this posting is no longer accepting applications."),
       "3",
     );
     expect(job.isActive).toBe(true);
@@ -125,7 +173,7 @@ describe("parseJobDetail active-status detection", () => {
 
   test("a closed-job class named in the description does not flag a live posting", () => {
     const job = parseJobDetail(
-      page("", "Our design system documents a closed-job__flavor CSS class."),
+      page(onsiteApply, "Our design system documents a closed-job__flavor CSS class."),
       "4",
     );
     expect(job.isActive).toBe(true);
@@ -300,3 +348,22 @@ describe("normalizeId", () => {
   });
 });
 
+
+describe("parsePostedAgo", () => {
+  test.each([
+    ["16 hours ago", 0],
+    ["1 day ago", 1],
+    ["3 days ago", 3],
+    ["1 week ago", 7],
+    ["4 weeks ago", 28],
+    ["Reposted 2 weeks ago", 14],
+    ["2 months ago", 60],
+  ])("%s -> %d", (text, days) => {
+    expect(parsePostedAgo(text)).toBe(days);
+  });
+
+  test("unparseable or missing text is null", () => {
+    expect(parsePostedAgo("Just now")).toBeNull();
+    expect(parsePostedAgo(null)).toBeNull();
+  });
+});
