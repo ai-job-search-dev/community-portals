@@ -21,7 +21,7 @@ portals/<country>/<board>-search/
 1. Generate it with `/add-portal` in your AI Job Search checkout. That command is the portal contract.
 2. Copy the generated `.agents/skills/<board>-search/` folder to `portals/<country>/<board>-search/` here.
 3. Add yourself as its owner in `.github/CODEOWNERS` (see below).
-4. Open a PR with a [Conventional Commits](https://www.conventionalcommits.org/) title, e.g. `feat(dk): add jobindex-search`; CI checks it with commitizen and re-runs when you edit it. One portal per PR.
+4. Open a PR with a [Conventional Commits](https://www.conventionalcommits.org/) title, e.g. `feat(dk): add jobindex-search`; CI checks it with commitizen, and again on every title edit. Until your first PR merges, each run waits for a maintainer to approve it. One portal per PR.
 
 Every PR is read before it merges. The bar is not code quality. It is these five things:
 
