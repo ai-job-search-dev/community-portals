@@ -212,7 +212,7 @@ function dropRawTextBlocks(src: string): string {
     const name = m[1].toLowerCase()
     if (!RAW_TEXT_BLOCKS.has(name)) continue
     kept.push(src.slice(from, m.index))
-    const close = new RegExp(`</${name}\s*>`, "gi")
+    const close = new RegExp(`</${name}\\s*>`, "gi")
     close.lastIndex = tag.lastIndex
     const c = close.exec(src)
     from = c ? close.lastIndex : src.length
