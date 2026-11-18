@@ -45,19 +45,22 @@ export interface FixtureRoute {
  */
 export async function runWithFixture(args: string[], route: FixtureRoute): Promise<{ result: CLIResult; requests: URL[] }> {
   const requests: URL[] = [];
-  const server = Bun.serve({
-    hostname: "127.0.0.1",
-    port: 0,
-    fetch(request) {
-      requests.push(new URL(request.url));
-      return new Response(route.body ?? Bun.file(join(import.meta.dir, "fixtures", route.fixture)), {
-        headers: { "Content-Type": route.contentType },
-      });
-    },
-  });
-  const dir = mkdtempSync(join(tmpdir(), "vagas-com-fixture-"));
-  const preload = join(dir, "fetch.ts");
-  writeFileSync(preload, `
+  let server: ReturnType<typeof Bun.serve> | undefined;
+  let dir: string | undefined;
+  try {
+    server = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch(request) {
+        requests.push(new URL(request.url));
+        return new Response(route.body ?? Bun.file(join(import.meta.dir, "fixtures", route.fixture)), {
+          headers: { "Content-Type": route.contentType },
+        });
+      },
+    });
+    dir = mkdtempSync(join(tmpdir(), "vagas-com-fixture-"));
+    const preload = join(dir, "fetch.ts");
+    writeFileSync(preload, `
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (input, init) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
@@ -67,11 +70,10 @@ export async function runWithFixture(args: string[], route: FixtureRoute): Promi
       return originalFetch(${JSON.stringify(server.url.origin)} + url.pathname + url.search, init);
     };
   `);
-  try {
     return { result: await runCLI(args, preload), requests };
   } finally {
-    server.stop(true);
-    rmSync(dir, { recursive: true, force: true });
+    server?.stop(true);
+    if (dir) rmSync(dir, { recursive: true, force: true });
   }
 }
 

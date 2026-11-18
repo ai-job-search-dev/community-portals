@@ -47,6 +47,14 @@ describe("vagas-com-cli search (saved results page)", () => {
     expect(requests[0].searchParams.get("pagina")).toBe("2");
   });
 
+  test("--jobage counts calendar days and reads the relative 'Há 2 dias' date", async () => {
+    // The third card shows "Há 2 dias"; the other two have absolute dates from earlier.
+    const two = await runWithFixture(["search", "-q", "desenvolvedor", "--jobage", "2"], SEARCH);
+    expect(parseJSON<SearchResult>(two.result).results.map((j) => j.id)).toEqual(["2843491"]);
+    const one = await runWithFixture(["search", "-q", "desenvolvedor", "--jobage", "1"], SEARCH);
+    expect(parseJSON<SearchResult>(one.result).results).toEqual([]);
+  });
+
   test("--limit trims the results client-side", async () => {
     const { result } = await runWithFixture(["search", "-q", "desenvolvedor", "--limit", "2"], SEARCH);
     expect(parseJSON<SearchResult>(result).results).toHaveLength(2);

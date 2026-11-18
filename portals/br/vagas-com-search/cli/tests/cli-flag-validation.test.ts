@@ -32,6 +32,37 @@ describe("vagas-com-cli argument validation", () => {
     expectJsonError(await runCLI(["apply"]), "BAD_CMD");
   });
 
+  test("fractional, trailing-garbage and zero numbers exit 1 with BAD_ARG", async () => {
+    for (const [flag, value] of [["--jobage", "0.5"], ["--limit", "10days"], ["--page", "1.5"], ["--jobage", "0"]]) {
+      expectJsonError(await runCLI(["search", "-q", "desenvolvedor", flag, value]), "BAD_ARG");
+    }
+  });
+
+  test("an unknown or misspelled flag exits 1 with UNKNOWN_FLAG", async () => {
+    expectJsonError(await runCLI(["search", "-q", "desenvolvedor", "--locatoin", "Goiânia"]), "UNKNOWN_FLAG");
+    expectJsonError(await runCLI(["detail", "2841827", "--jobage", "7"]), "UNKNOWN_FLAG");
+  });
+
+  test("an unquoted extra word exits 1 with BAD_ARG", async () => {
+    expectJsonError(await runCLI(["search", "-q", "programador", "trainee"]), "BAD_ARG");
+    expectJsonError(await runCLI(["detail", "2841827", "extra"]), "BAD_ARG");
+  });
+
+  test("a bare or empty --location exits 1 with BAD_ARG", async () => {
+    expectJsonError(await runCLI(["search", "-q", "desenvolvedor", "--location"]), "BAD_ARG");
+    expectJsonError(await runCLI(["search", "-q", "desenvolvedor", "--location", " "]), "BAD_ARG");
+  });
+
+  test("a query or location with no letters or digits is rejected before fetching", async () => {
+    expectJsonError(await runCLI(["search", "-q", "!!!"]), "NO_QUERY");
+    expectJsonError(await runCLI(["search", "-q", "desenvolvedor", "-l", "..."]), "BAD_ARG");
+  });
+
+  test("an unsupported --format exits 1 with BAD_ARG", async () => {
+    expectJsonError(await runCLI(["search", "-q", "desenvolvedor", "--format", "csv"]), "BAD_ARG");
+    expectJsonError(await runCLI(["detail", "2841827", "--format", "table"]), "BAD_ARG");
+  });
+
   test("a network failure is reported as a JSON error, not a crash", async () => {
     expectJsonError(await runCLI(["search", "-q", "desenvolvedor"]), "SEARCH_FAILED");
   });

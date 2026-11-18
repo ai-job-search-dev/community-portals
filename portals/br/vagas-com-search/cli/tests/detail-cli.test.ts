@@ -38,6 +38,16 @@ describe("vagas-com-cli detail (saved posting page)", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.split("\n")[0]).toBe("Desenvolvedor de Software Jr");
     expect(result.stdout).toContain("URL: https://www.vagas.com.br/vagas/v2841827");
+    // Blank lines separate the header, the description and the URL.
+    expect(result.stdout).toMatch(/\n\nURL: https:\/\/www\.vagas\.com\.br\/vagas\/v2841827$/);
+    expect(result.stdout.split("\n")[2]).toBe("");
+  });
+
+  test("the description keeps its paragraph and list line breaks", async () => {
+    const { result } = await runWithFixture(["detail", "2841827"], DETAIL);
+    const job = parseJSON<{ description: string }>(result);
+    expect(job.description.split("\n").length).toBeGreaterThan(3);
+    expect(job.description).not.toMatch(/\n{3,}/);
   });
 
   test("a delisted posting (redirected to a search page) exits 1 with NOT_FOUND", async () => {

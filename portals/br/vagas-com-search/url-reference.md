@@ -16,18 +16,21 @@ the returned markup directly.
 GET https://www.vagas.com.br/vagas-de-<query-slug>[-em-<city-slug>][?pagina=<n>]
 ```
 
-- `<query-slug>`: the search keyword, lowercased, accents stripped, spaces to
-  hyphens (e.g. `desenvolvedor júnior` -> `desenvolvedor-junior`). Confirmed
+- `<query-slug>`: the search keyword, lowercased, accents stripped, and every run
+  of other characters (spaces, quotes, punctuation) turned into a single hyphen, with
+  none at either end (e.g. `desenvolvedor júnior` -> `desenvolvedor-junior`). A value
+  with no letters or digits leaves nothing to search for, so the CLI rejects it. Confirmed
   working examples: `/vagas-de-programador-junior/`, `/vagas-de-desenvolvedor`,
   `/vagas-de-programador-trainee-em-goiania`.
 - `-em-<city-slug>` is optional; same slugification applied to the city name.
-- `pagina=<n>` (1-indexed... actually the site's own "load more" button targets
-  `pagina=2` for the second batch) paginates further results. Confirmed via the
+- Page 1 is the bare URL; page `n > 1` adds `?pagina=<n>` (the site's own "load
+  more" button targets `pagina=2` for the second batch). Confirmed via the
   `data-url="/vagas-de-programador?pagina=2&q=programador"` attribute on the
   "load more" button, and by fetching `?pagina=2` directly (returns a distinct
   results page, HTTP 200).
 - No parameter was found for posting-age filtering — apply this client-side
-  against each card's `data-publicacao` date (format `DD/MM/YYYY`).
+  against each card's `data-publicacao` date: `DD/MM/YYYY`, or for recent postings
+  a relative date (`Hoje`, `Ontem`, `Há 2 dias`, `Há 5 horas`) that the CLI converts.
 - A specific `query`+`city` combination can legitimately return zero results
   (the site tracks this itself: a `dataLayer.push` event
   `eventAction: "erro:nao-encontramos-vagas"` fires on empty result pages) — this

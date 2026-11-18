@@ -34,17 +34,20 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     const job = stripInvisible(parseJobDetail(html, id))
 
     if (opts.format === "plain") {
+      // Optional lines are added only when present, so the blank spacers stay.
+      const extras = [
+        job.contractType ? `Contract: ${job.contractType}` : null,
+        job.salary ? `Salary: ${job.salary}` : null,
+      ].filter((l): l is string => l !== null)
       const lines = [
         job.title,
         `${job.company || "—"} · ${job.location || "—"}`,
-        "",
-        job.contractType ? `Contract: ${job.contractType}` : "",
-        job.salary ? `Salary: ${job.salary}` : "",
+        ...(extras.length ? ["", ...extras] : []),
         "",
         job.description || "(no description)",
         "",
         `URL: ${job.url}`,
-      ].filter((l) => l !== "")
+      ]
       process.stdout.write(lines.join("\n") + "\n")
     } else {
       process.stdout.write(JSON.stringify(job, null, 2) + "\n")

@@ -79,9 +79,9 @@ function numericEntity(cp: number): string {
   return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ""
 }
 
+// &amp; goes last: decoding it first would turn "&amp;lt;" into "<" instead of "&lt;".
 function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
@@ -91,6 +91,7 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#(\d+);/g, (_, dec) => numericEntity(parseInt(dec, 10)))
     .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, hex) => numericEntity(parseInt(hex, 16)))
     .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
 }
 
 /**
@@ -135,7 +136,8 @@ function isHiddenTag(attrs: string): boolean {
 
 /**
  * Drop markup a browser never renders - comments (including Word's
- * conditional ones), <script>/<style>/<template> blocks, and elements marked
+ * conditional ones), <script>/<style>/<template>/<noscript> blocks (a
+ * scripting-enabled browser never shows <noscript>), and elements marked
  * hidden - before tags are stripped. A plain tag strip keeps their text, which
  * hands the model words the posting's reader never saw. CSS-only tricks
  * (off-screen, zero font size) need a renderer and are not caught here.
@@ -143,7 +145,7 @@ function isHiddenTag(attrs: string): boolean {
 export function visibleHtml(html: string): string {
   const src = html
     .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
-    .replace(/<(script|style|template)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
+    .replace(/<(script|style|template|noscript)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "")
   // One pass, collecting what is kept: slicing the string per hidden element
   // would make a page full of them quadratic.
   const open = new RegExp(`<([a-zA-Z][a-zA-Z0-9-]*)(\\s${ATTRS})?>`, "g")
@@ -186,6 +188,16 @@ function stripTags(html: string): string {
   return visibleHtml(html).replace(new RegExp(`<${ATTRS}>`, "g"), " ").replace(/\s+/g, " ").trim()
 }
 
+/** Like stripTags, but keeps the line breaks the caller inserted. */
+function stripTagsKeepLines(html: string): string {
+  return visibleHtml(html)
+    .replace(new RegExp(`<${ATTRS}>`, "g"), " ")
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .join("\n")
+    .trim()
+}
+
 function clean(html: string): string {
   return decodeHtmlEntities(stripTags(html))
 }
@@ -211,6 +223,34 @@ function extractBalancedDiv(html: string, openTagPattern: RegExp): string | null
     } else {
       depth++
     }
+  }
+  return null
+}
+
+function ddmmyyyy(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+}
+
+/**
+ * Cards show either an absolute date ("04/11/2026") or, for recent postings, a
+ * relative one ("Hoje", "Ontem", "Há 2 dias", "Há 5 horas"). Return both as
+ * DD/MM/YYYY, so --jobage can filter recent postings too; anything else is null.
+ */
+export function parseCardDate(text: string, now: Date = new Date()): string | null {
+  const t = text.trim()
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(t)) return t
+  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const lower = t.toLowerCase()
+  if (lower === "hoje" || /^h[áa] \d+ (hora|minuto|segundo)s?$/.test(lower)) return ddmmyyyy(day)
+  if (lower === "ontem") {
+    day.setDate(day.getDate() - 1)
+    return ddmmyyyy(day)
+  }
+  const days = lower.match(/^h[áa] (\d+) dias?$/)
+  if (days) {
+    day.setDate(day.getDate() - Number(days[1]))
+    return ddmmyyyy(day)
   }
   return null
 }
@@ -241,8 +281,8 @@ export function parseJobCards(html: string): JobCard[] {
     const locMatch = chunk.match(/class="vaga-local"[^>]*>([\s\S]*?)(?:<div|<\/div>)/i)
     const location = locMatch ? clean(locMatch[1]) || null : null
 
-    const dateMatch = chunk.match(/class="data-publicacao"[^>]*>[\s\S]*?<\/i>([\d/]+)/i)
-    const date = dateMatch ? dateMatch[1] : null
+    const dateMatch = chunk.match(/class="data-publicacao"[^>]*>[\s\S]*?<\/i>([^<]*)/i)
+    const date = dateMatch ? parseCardDate(clean(dateMatch[1])) : null
 
     results.push({ id, title, company, location, date, url })
   }
@@ -271,7 +311,7 @@ export function parseJobDetail(html: string, id: string): JobDetail {
   const descInner = extractBalancedDiv(html, /<div class="job-tab-content job-description__text[^"]*"[^>]*>/i)
   if (descInner) {
     const withBreaks = visibleHtml(descInner).replace(/<\s*br\s*\/?>/gi, "\n").replace(/<\/(p|li|ul|ol|div|h\d)>/gi, "\n")
-    description = decodeHtmlEntities(stripTags(withBreaks)).replace(/\n{3,}/g, "\n\n").trim() || null
+    description = decodeHtmlEntities(stripTagsKeepLines(withBreaks)).replace(/\n{3,}/g, "\n\n").trim() || null
   }
 
   return {

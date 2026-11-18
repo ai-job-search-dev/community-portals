@@ -11,7 +11,10 @@ Full page SHA-256: `379132fb215a7742392543b504a65d9422bcdae9e6ec3e5772d7331e7121
 Kept: the first three `<li class="vaga ...">` cards (jobs `2841827`, `2840867`,
 `2843491`) as one contiguous, unmodified slice (SHA-256
 `12c18ea32218e92f63158905d23cc871b49956d211ea734dc7a60c94273c5e99`), inside a minimal
-HTML shell. Navigation, scripts, ads and the remaining cards are dropped.
+HTML shell. The slice includes the empty ad slot (`<li class="publicidade">`)
+that sits between the second and third cards on the page, since cutting it out
+would break the unmodified slice; the parser skips it. Navigation, scripts, the
+other ads and the remaining cards are dropped.
 
 ## `detail-v2841827-excerpt.html`
 

@@ -18,15 +18,20 @@ function buildUrl(opts: SearchOpts): string {
   return `${BASE_URL}${path}${qs ? `?${qs}` : ""}`
 }
 
-/** Vagas.com's search pages have no posting-age parameter, so jobage is applied client-side. */
+/**
+ * Vagas.com's search pages have no posting-age parameter, so jobage is applied
+ * client-side, by calendar day: --jobage N keeps postings from N days ago or later.
+ * A card whose date cannot be read is dropped while the filter is on, since its
+ * age is unknown.
+ */
 function withinJobage(card: JobCard, days: number | undefined): boolean {
-  if (!days || days <= 0 || days >= 9999) return true
-  if (!card.date) return true
+  if (days === undefined) return true
+  if (!card.date) return false
   const [d, m, y] = card.date.split("/").map(Number)
-  if (!d || !m || !y) return true
-  const posted = new Date(y, m - 1, d).getTime()
-  const cutoff = Date.now() - days * 86400 * 1000
-  return posted >= cutoff
+  if (!d || !m || !y) return false
+  const now = new Date()
+  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days).getTime()
+  return new Date(y, m - 1, d).getTime() >= cutoff
 }
 
 function renderTable(cards: JobCard[]): string {

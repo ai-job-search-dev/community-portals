@@ -50,7 +50,9 @@ Key flags:
   specific combination of both can return zero results even when each works alone
   (see Notes).
 - `--jobage <days>` — posted within N days. Applied **client-side** (Vagas.com's
-  search pages have no posting-age parameter) against each card's publication date.
+  search pages have no posting-age parameter) against each card's publication date,
+  by calendar day; relative dates (`Hoje`, `Ontem`, `Há 2 dias`) are converted, and
+  a card whose date cannot be read is left out while the filter is on.
 - `--page <n>` — page number (1-indexed). Vagas.com paginates via a `pagina` query param.
 - `--limit <n>` / `-n <n>` — cap total results emitted (client-side).
 - `--format json|table|plain` — default `json`.
@@ -92,7 +94,7 @@ bun run .agents/skills/vagas-com-search/cli/src/cli.ts detail 2814044 --format p
 | `table` | Quick human-readable scanning |
 | `plain` | Reading a single job's full detail (`detail` command) |
 
-All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and the process exits with code `1`.
+All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and the process exits with code `1`. Running the CLI with no command prints the help to **stdout** and also exits `1`.
 
 ## Notes
 
@@ -102,12 +104,13 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
 - `robots.txt` disallows `/vagas/pesquisas`, `/api/`, `/v1/`, and a handful of
   account/auth paths — none of those overlap with the search (`/vagas-de-...`) or
   detail (`/vagas/v<id>/...`) paths this integration uses. The CLI identifies itself
-  as `vagas-com-cli/1.0` and makes one request per command.
+  as `vagas-com-cli/1.0` and makes one request per command; only a 429 or 5xx
+  response is retried, up to six times with exponential backoff.
 - A posting that is no longer listed redirects to a search page; `detail` reports it
   as `NOT_FOUND` instead of returning an empty record.
 - Combining a specific `--query` with a specific `--location` can legitimately
   return zero results if no current posting matches that exact slug combination —
-  this mirrors the site's own keyword-slug search behavior, not a parsing bug. Try
-  the query alone, or the location alone, to sanity-check before assuming a broken
-  parser.
+  this mirrors the site's own keyword-slug search behavior, not a parsing bug. Drop
+  `--location` and run the query alone to sanity-check before assuming a broken
+  parser (`--query` is required, so a location-only search is not possible).
 - Job IDs are numeric (e.g. `2814044`) — pass them as-is to `detail`.
