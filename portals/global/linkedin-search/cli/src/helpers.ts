@@ -361,7 +361,10 @@ export function parseJobDetail(html: string, id: string): JobDetail {
   // Absence of the banner is absence of evidence, not proof the posting is
   // open - markup drift or a consent-walled response also renders no banner -
   // so isActive: true means only "no closed banner found".
-  const descStart = html.search(/class="(?:show-more-less-html__markup|description__text)/i)
+  // Match the description class as a token anywhere in the class list, as
+  // extractDivContent does: a class placed before it must not push the
+  // boundary off and turn the whole page (description included) into topcard.
+  const descStart = html.search(/class="[^"]*\b(?:show-more-less-html__markup|description__text)\b/i)
   const topcard = descStart === -1 ? html : html.slice(0, descStart)
   // Guest pages verified 2026-11-18: a closed posting no longer renders the
   // banner, only drops the Apply button. An open posting carries one of:

@@ -144,6 +144,14 @@ describe("parseJobDetail active-status detection", () => {
     expect(job.applyState).toBe("likely-closed");
   });
 
+  test("Apply markup in a description whose class is not first in the list stays out of the top card", () => {
+    const html = `
+      <h1 class="topcard__title">Data Engineer</h1>
+      <div class="relative show-more-less-html__markup">Click <a class="apply-button">Apply</a> on our site.</div>`;
+    const job = parseJobDetail(html, "2i");
+    expect(job.applyState).toBe("likely-closed");
+  });
+
   test("a closed banner wins over an Apply control", () => {
     const job = parseJobDetail(page(closedBanner + onsiteApply, "x"), "2f");
     expect(job.applyState).toBe("closed");
