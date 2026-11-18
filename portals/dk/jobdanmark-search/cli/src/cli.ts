@@ -38,7 +38,7 @@ const argv = process.argv.slice(2)
 const invoked = commands.find((c) => (c as { name?: string }).name === argv[0])
 if (invoked) {
   const options =
-    (invoked as { options?: Record<string, { short?: string; repeatable?: boolean } | undefined> }).options ?? {}
+    (invoked as { options?: Record<string, { short?: string; repeatable?: boolean; schema?: unknown } | undefined> }).options ?? {}
   const known = new Set([...Object.keys(options), "help", "version"])
   const knownShorts = new Set(
     Object.values(options)
@@ -121,6 +121,36 @@ if (invoked) {
     // An empty or whitespace-only next token (`--region ''`) is no value either.
     if (next === undefined || next.startsWith("-") || next.trim() === "") {
       writeError(`option ${token} requires a value`, "BAD_ARG")
+      process.exit(1)
+    }
+  }
+
+  // bunli reports a value outside an enum option (`--format csv`) as
+  // `{"ok":false,"error":{...}}` on stderr - not the `{error, code}` shape
+  // add-portal.md's contract requires and freehire/linkedin emit, so a caller
+  // keyed on `code` sees none. Check enum membership here, in the contract's
+  // shape, for both `--flag value` and `--flag=value`.
+  const enumValues = (schema: unknown): string[] | undefined => {
+    let s = schema as { _def?: { type?: string; innerType?: unknown }; options?: string[] } | undefined
+    while (s?._def && ["default", "optional", "nullable"].includes(s._def.type ?? "")) {
+      s = s._def.innerType as typeof s
+    }
+    return s?._def?.type === "enum" ? s.options : undefined
+  }
+  for (let i = 1; i < argv.length; i++) {
+    const token = argv[i]
+    if (token === "--") break
+    if (!token.startsWith("-")) continue
+    const [flag, ...rest] = token.replace(/^-+/, "").split("=")
+    const name = token.startsWith("--")
+      ? (options[flag] !== undefined ? flag : undefined)
+      : Object.entries(options).find(([, o]) => o?.short === flag)?.[0]
+    if (name === undefined) continue
+    const allowed = enumValues(options[name]?.schema)
+    if (allowed === undefined) continue
+    const value = rest.length > 0 ? rest.join("=") : argv[i + 1]
+    if (value !== undefined && !allowed.includes(value)) {
+      writeError(`option --${name} must be one of ${allowed.join("|")}, got "${value}"`, "BAD_ARG")
       process.exit(1)
     }
   }
