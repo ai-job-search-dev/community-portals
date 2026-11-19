@@ -52,7 +52,8 @@ The suite never touches the network. `tests/fixtures/fetch-fixture.ts` is preloa
 into the CLI child process and serves a canned justjoin.it `/job-offers` page; any
 request to another host or path throws, so a stray request fails the test.
 `tests/parsing.test.ts` covers the parsers (including UTF-8 byte-length RSC rows),
-`tests/cli-flag-validation.test.ts` and `tests/output.test.ts` run the CLI end to end
-against the fixture, and `tests/retry-backoff.test.ts` covers retry behaviour.
+`tests/cli-flag-validation.test.ts` exercises selected CLI paths in a child process
+with the fixture; `tests/output.test.ts` calls `runSearch`/`runDetail` in-process
+with its own mocked fetch, and `tests/retry-backoff.test.ts` covers retry behaviour.
 Because nothing is live, a change in justjoin.it's rendering will not fail the suite
 — re-check `../url-reference.md` against the real site when it misbehaves.

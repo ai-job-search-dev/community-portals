@@ -229,8 +229,9 @@ export function resolveRscRef(payload: string, ref: unknown): string | null {
   const start = m.index + m[0].length
   // React Flight writes the length in UTF-8 bytes, not characters, so slice the
   // encoded bytes or a description with Polish diacritics overruns into the
-  // next row.
-  const bytes = new TextEncoder().encode(payload.slice(start))
+  // next row. Every UTF-16 code unit encodes to at least one byte, so the
+  // first `len` code units always cover the row's `len` bytes.
+  const bytes = new TextEncoder().encode(payload.slice(start, start + len))
   return new TextDecoder().decode(bytes.subarray(0, len))
 }
 
