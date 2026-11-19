@@ -1,0 +1,12 @@
+{
+  "name": "usajobs-cli",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "LanguageCode": "EN",
+  "SearchParameters": {
+    "Keyword": "software engineer",
+    "LocationName": "California"
+  },
+  "SearchResult": {
+    "SearchResultCount": 2,
+    "SearchResultCountAll": 150,
+    "SearchResultItems": [
+      {
+        "MatchedObjectId": "12345678",
+        "MatchedObjectDescriptor": {
+          "PositionID": "USGS-DEF-CA-26-00001",
+          "PositionTitle": "Software Engineer",
+          "PositionURI": "https://www.usajobs.gov/job/12345678/",
+          "ApplyURI": ["https://apply.usastaffing.gov/Application/Apply"],
+          "PositionLocationDisplay": "San Francisco, California",
+          "PositionLocation": [
+            {
+              "LocationName": "San Francisco, California",
+              "CountryCode": "United States",
+              "CityName": "San Francisco, California",
+              "Longitude": -122.419,
+              "Latitude": 37.774
+            }
+          ],
+          "OrganizationName": "United States Geological Survey",
+          "DepartmentName": "Department of the Interior",
+          "JobCategory": [{"Name": "Information Technology Management", "Code": "2210"}],
+          "PositionSchedule": [{"Name": "Full-Time", "Code": "1"}],
+          "PositionOfferingType": [{"Name": "Permanent", "Code": "15317"}],
+          "PositionRemuneration": [
+            {
+              "MinimumRange": "73301.0",
+              "MaximumRange": "95424.0",
+              "RateIntervalCode": "PA",
+              "Description": "Per Year"
+            }
+          ],
+          "PublicationStartDate": "2026-11-01T00:00:00Z",
+          "ApplicationCloseDate": "2026-11-30T00:00:00Z",
+          "UserArea": {
+            "Details": {
+              "JobSummary": "About the Position: Join the USGS team to build geospatial software tools.",
+              "WhoMayApply": {
+                "Name": "Open to the public",
+                "Code": "15514"
+              },
+              "RemoteIndicator": false
+            }
+          }
+        }
+      },
+      {
+        "MatchedObjectId": "12345679",
+        "MatchedObjectDescriptor": {
+          "PositionID": "DOD-ARMY-CA-26-00002",
+          "PositionTitle": "Senior Software Engineer",
+          "PositionURI": "https://www.usajobs.gov/job/12345679/",
+          "ApplyURI": ["https://apply.usastaffing.gov/Application/Apply2"],
+          "PositionLocationDisplay": "Anywhere in the U.S. (remote job)",
+          "PositionLocation": [
+            {
+              "LocationName": "Anywhere in the U.S. (remote job)",
+              "CountryCode": "United States",
+              "CityName": "Anywhere in the U.S. (remote job)",
+              "Longitude": 0,
+              "Latitude": 0
+            }
+          ],
+          "OrganizationName": "Department of the Army",
+          "DepartmentName": "Department of Defense",
+          "JobCategory": [{"Name": "Information Technology Management", "Code": "2210"}],
+          "PositionSchedule": [{"Name": "Full-Time", "Code": "1"}],
+          "PositionOfferingType": [{"Name": "Term", "Code": "15318"}],
+          "PositionRemuneration": [
+            {
+              "MinimumRange": "95824.0",
+              "MaximumRange": "148451.0",
+              "RateIntervalCode": "PA",
+              "Description": "Per Year"
+            }
+          ],
+          "PublicationStartDate": "2026-11-05T00:00:00Z",
+          "ApplicationCloseDate": "2026-12-15T00:00:00Z",
+          "UserArea": {
+            "Details": {
+              "JobSummary": "This position is telework eligible. Build distributed systems for DoD.",
+              "WhoMayApply": {
+                "Name": "Open to the public",
+                "Code": "15514"
+              },
+              "RemoteIndicator": true
+            }
+          }
+        }
+      }
+    ]
+  }
+}
