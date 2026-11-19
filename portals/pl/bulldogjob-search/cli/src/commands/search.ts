@@ -2,6 +2,7 @@ import {
   PAGE_SIZE,
   PortalError,
   buildListUrl,
+  fold,
   htmlFetch,
   jobUrl,
   parseDetail,
@@ -33,9 +34,6 @@ export interface SearchOpts {
 export const MAX_PAGES = 10
 const PAGE_DELAY_MS = 1500
 const DATE_DELAY_MS = 300
-
-const fold = (s: string): string =>
-  s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "")
 
 /**
  * bulldogjob has no free-text search: its list pages filter by skill, role, level and
@@ -115,7 +113,11 @@ async function fetchCards(opts: SearchOpts, skill: string | undefined, sweep: bo
   return { cards, total, pages, truncated: sweep && pages === MAX_PAGES && lastPageFull && total > readThrough }
 }
 
-/** Fill date/postedAt from each offer's detail page. Returns the ids whose lookup failed. */
+/**
+ * Fill date/postedAt from each offer's detail page. Returns the ids whose lookup failed.
+ * A 429 that outlasts htmlFetch's retries stops all further lookups: the remaining
+ * offers count as failed instead of hammering a portal that is already throttling.
+ */
 async function addDates(cards: JobCard[], delayMs: number): Promise<string[]> {
   const failed: string[] = []
   for (let i = 0; i < cards.length; i++) {
@@ -126,7 +128,11 @@ async function addDates(cards: JobCard[], delayMs: number): Promise<string[]> {
       const d = parseDetail(html, cards[i].id)
       cards[i].date = d.date
       cards[i].postedAt = d.postedAt
-    } catch {
+    } catch (e) {
+      if (e instanceof PortalError && e.code === "RATE_LIMITED") {
+        failed.push(...cards.slice(i).map((c) => c.id))
+        break
+      }
       failed.push(cards[i].id)
     }
   }
@@ -140,6 +146,10 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     const sweep = Boolean(opts.all) || terms.length > 0
     const { cards: fetched, total, pages, truncated } = await fetchCards(opts, skill, sweep)
     let cards = stripInvisible(fetched).filter((c) => matchesTerms(c, terms))
+    const limit = opts.limit !== undefined && opts.limit >= 0 ? opts.limit : undefined
+    // Without --jobage the limit does not depend on dates, so apply it first and look
+    // up only the offers that will be emitted (newest by id, as ids grow with time).
+    if (opts.jobage === undefined && limit !== undefined) cards = sortNewestFirst(cards).slice(0, limit)
 
     if (opts.dates || opts.jobage !== undefined) {
       const failed = await addDates(cards, opts.pageDelayMs ?? DATE_DELAY_MS)
@@ -158,7 +168,7 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     }
 
     cards = sortNewestFirst(cards)
-    if (opts.limit !== undefined && opts.limit >= 0) cards = cards.slice(0, opts.limit)
+    if (limit !== undefined) cards = cards.slice(0, limit)
     if (truncated) {
       process.stderr.write(
         JSON.stringify({

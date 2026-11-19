@@ -232,6 +232,34 @@ describe("search output", () => {
     expect(JSON.parse(err().trim()).code).toBe("DATE_LOOKUP_FAILED")
   })
 
+  test("--dates --limit 1 looks up only the emitted offer", async () => {
+    const urls = mockSite((u) =>
+      u.pathname.includes("/s/") ? fullPage(1) : detailPage(u.pathname.split("/").pop()!, "2026-11-02T10:00:00+01:00"),
+    )
+    const out = capture("stdout")
+    expect(await runSearch({ ...base, dates: true, limit: 1 })).toBe(0)
+    const parsed = JSON.parse(out())
+    expect(parsed.results.map((r: { id: string }) => r.id)).toEqual(["1050-role-50"])
+    expect(parsed.results[0].date).toBe("2026-11-02")
+    expect(urls).toHaveLength(2)
+  })
+
+  test("date lookups stop at the first 429 that outlasts the retries", async () => {
+    const realSetTimeout = globalThis.setTimeout
+    globalThis.setTimeout = ((fn: () => void) => realSetTimeout(fn, 0)) as unknown as typeof setTimeout
+    try {
+      const urls = mockSite((u) => (u.pathname.includes("/s/") ? fullPage(1) : [429, ""]))
+      const out = capture("stdout")
+      const err = capture("stderr")
+      expect(await runSearch({ ...base, dates: true })).toBe(0)
+      expect(JSON.parse(out()).results).toHaveLength(50)
+      expect(urls).toHaveLength(1 + 7) // list page + one detail page's 7 attempts
+      expect(JSON.parse(err().trim()).code).toBe("DATE_LOOKUP_FAILED")
+    } finally {
+      globalThis.setTimeout = realSetTimeout
+    }
+  })
+
   test("a missing list page exits 1 with NOT_FOUND", async () => {
     mockSite(() => [404, ""])
     const err = capture("stderr")
