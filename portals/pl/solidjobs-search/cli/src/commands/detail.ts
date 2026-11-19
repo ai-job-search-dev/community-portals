@@ -6,16 +6,22 @@ export interface DetailOpts {
 }
 
 const SOLID_HOST = /^(www\.)?solid\.jobs$/i
+const OFFER_NUMBER = /^\d{1,7}$/
 
 /**
- * Accept a short code (`xaev3a3s`, the `id` from search), a short link
+ * Accept a short code (`xaev3a3s`, the `id` from search), an offer number
+ * (`39620`, the `id` reported for a full offer URL), a short link
  * (`https://solid.jobs/o/<code>[/...]`) or a full offer URL
  * (`https://solid.jobs/offer/<number>/<slug>`). Returns the page path to fetch
- * and the id to report. URLs on any other host are rejected, with host and path
- * read through real URL parsing so look-alike hosts and userinfo tricks fail.
+ * and the id to report, and every id it reports maps back to the same offer.
+ * URLs on any other host are rejected, with host and path read through real
+ * URL parsing so look-alike hosts and userinfo tricks fail.
  */
 export function normalizeId(input: string): { id: string; path: string } | null {
   const trimmed = input.trim()
+  // Short codes are 8 base-36 characters; offer numbers are shorter and all
+  // digits. `/offer/<number>` serves the offer page without its slug.
+  if (OFFER_NUMBER.test(trimmed)) return { id: trimmed, path: `/offer/${trimmed}` }
   if (OFFER_CODE.test(trimmed)) return { id: trimmed, path: `/o/${trimmed}` }
 
   const hasScheme = /^https?:\/\//i.test(trimmed)

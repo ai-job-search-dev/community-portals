@@ -91,6 +91,14 @@ describe("codeFromUrl / normalizeId", () => {
     })
   })
 
+  test("the id reported for a full offer URL fetches the same offer", () => {
+    const fromUrl = normalizeId("https://solid.jobs/offer/12345/php-dev")
+    expect(fromUrl).toEqual({ id: "12345", path: "/offer/12345/php-dev" })
+    expect(normalizeId(fromUrl!.id)).toEqual({ id: "12345", path: "/offer/12345" })
+    // An 8-character short code stays on the short-link path, even if all digits.
+    expect(normalizeId("12345678")).toEqual({ id: "12345678", path: "/o/12345678" })
+  })
+
   test("rejects other hosts, look-alikes and userinfo tricks", () => {
     expect(normalizeId("https://evil.io/o/abc123xy")).toBeNull()
     expect(normalizeId("https://solid.jobs.evil.io/o/abc123xy")).toBeNull()
