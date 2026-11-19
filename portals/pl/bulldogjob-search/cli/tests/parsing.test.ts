@@ -235,6 +235,13 @@ describe("parseDetail picks the requested offer", () => {
     expect(parseDetail(page({ __APOLLO_STATE__: apollo }), "1001-some-slug").title).toBe("Wanted")
   })
 
+  test("a bare id finds its slug-keyed entry next to a related offer", () => {
+    const apollo = { "Job:999-related": job("999-related", "Related"), "Job:260906-php-dev": job("260906-php-dev", "Wanted") }
+    const d = parseDetail(page({ __APOLLO_STATE__: apollo }), "260906")
+    expect(d.title).toBe("Wanted")
+    expect(d.id).toBe("260906-php-dev")
+  })
+
   test("several Job entries and none for the id is a parse failure, not a guess", () => {
     const apollo = { "Job:2002": job("2002", "A"), "Job:3003": job("3003", "B") }
     expect(() => parseDetail(page({ __APOLLO_STATE__: apollo }), "1001-x")).toThrow(/markup changed/)

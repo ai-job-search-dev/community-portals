@@ -37,7 +37,8 @@ export async function htmlFetch(url: string): Promise<string> {
     })
     if (response.status === 429 || response.status >= 500) {
       if (attempt === maxRetries) {
-        throw new Error(`Request failed: ${response.status} ${response.statusText}`)
+        const msg = `Request failed: ${response.status} ${response.statusText}`
+        throw response.status === 429 ? new PortalError(msg, "RATE_LIMITED") : new Error(msg)
       }
       const jitter = Math.floor(Math.random() * 500)
       await new Promise((r) => setTimeout(r, delay + jitter))
@@ -335,11 +336,14 @@ export function parseDetail(html: string, id: string): JobDetail {
   const apollo = isObj(pp.__APOLLO_STATE__) ? pp.__APOLLO_STATE__ : null
   // Prefer the entry for the requested offer: the Apollo state may hold other Job
   // entries (related offers), and the first one is not necessarily this one. The
-  // key is `Job:<id>` or `Job:<leading number>`. Only when neither is present and the
+  // key is `Job:<id>`, `Job:<leading number>`, or - when a bare number redirected to
+  // the canonical page - `Job:<number>-<slug>`. Only when none is present and the
   // state holds a single Job entry is that one used; with several, refuse.
   const wanted = /^\d+/.exec(id)?.[0]
   const jobKeys = apollo ? Object.keys(apollo).filter((k) => k.startsWith("Job:")) : []
-  const exact = [`Job:${id}`, ...(wanted ? [`Job:${wanted}`] : [])].find((k) => jobKeys.includes(k))
+  const exact =
+    [`Job:${id}`, ...(wanted ? [`Job:${wanted}`] : [])].find((k) => jobKeys.includes(k)) ??
+    (wanted ? jobKeys.find((k) => k.startsWith(`Job:${wanted}-`)) : undefined)
   const key = exact ?? (jobKeys.length === 1 ? jobKeys[0] : undefined)
   const job = apollo && key && isObj(apollo[key]) ? (apollo[key] as Json) : null
   if (!apollo || !job) throw new PortalError("Job entry missing from detail page - bulldogjob markup changed", "PARSE_FAILED")
@@ -408,7 +412,8 @@ export const CITIES = [
 ]
 export const LEVELS = ["junior", "medium", "senior", "lead"]
 
-const fold = (s: string): string =>
+/** Lowercase and strip diacritics (ł -> l too) for case/diacritic-insensitive matching. */
+export const fold = (s: string): string =>
   s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "")
 
 /** Case- and diacritic-insensitive city match ("krakow" -> "Kraków"); null when the portal has no such city filter. */
