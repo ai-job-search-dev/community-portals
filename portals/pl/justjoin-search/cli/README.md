@@ -44,11 +44,15 @@ Full flag reference: `../SKILL.md`. Endpoints and parsing anchors:
 ## Test
 
 ```bash
-bun run test        # 40 tests: offline parsing + live smoke tests
+bun run test        # offline suite, no network
 bun run typecheck
 ```
 
-`tests/parsing.test.ts` runs offline against fixtures. `tests/search.test.ts` and
-`tests/cli-flag-validation.test.ts` make a handful of real requests to justjoin.it
-— they fail loudly if the portal is unreachable or its rendering changed, which is
-the point.
+The suite never touches the network. `tests/fixtures/fetch-fixture.ts` is preloaded
+into the CLI child process and serves a canned justjoin.it `/job-offers` page; any
+request to another host or path throws, so a stray request fails the test.
+`tests/parsing.test.ts` covers the parsers (including UTF-8 byte-length RSC rows),
+`tests/cli-flag-validation.test.ts` and `tests/output.test.ts` run the CLI end to end
+against the fixture, and `tests/retry-backoff.test.ts` covers retry behaviour.
+Because nothing is live, a change in justjoin.it's rendering will not fail the suite
+— re-check `../url-reference.md` against the real site when it misbehaves.

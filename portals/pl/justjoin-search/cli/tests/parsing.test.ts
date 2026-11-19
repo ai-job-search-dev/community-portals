@@ -151,6 +151,14 @@ describe("detail-page shapes", () => {
     expect(resolveRscRef(payload, "$5b")).toBe(body)
   })
 
+  test("resolveRscRef counts the chunk length in UTF-8 bytes, not characters", () => {
+    const body = "<p>Zakres obowiązków: rozwój usług</p>"
+    const bytes = new TextEncoder().encode(body).length
+    expect(bytes).toBeGreaterThan(body.length)
+    const payload = `\n5b:T${bytes.toString(16)},${body}\n5c:I["next row"]`
+    expect(resolveRscRef(payload, "$5b")).toBe(body)
+  })
+
   test("resolveRscRef returns null for a non-reference body", () => {
     expect(resolveRscRef("", "literal text")).toBeNull()
   })

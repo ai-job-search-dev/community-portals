@@ -119,7 +119,9 @@ The detail page's offer object is **not** shaped like a search result:
   \n5b:T<hex-length>,<raw HTML description>
   ```
 
-  The hex length is the character count to slice. This chunk holds the real
+  The hex length is a **UTF-8 byte count**, not a character count (React Flight
+  frames rows in bytes), so slice the encoded bytes — descriptions with Polish
+  diacritics are longer in bytes than in characters. This chunk holds the real
   `<p>`/`<ul>`/`<li>` markup, which `stripHtml` turns back into paragraphs and
   `- ` bullets.
 - `isOfferActive` (boolean) is authoritative for `isActive`; `validThrough` is

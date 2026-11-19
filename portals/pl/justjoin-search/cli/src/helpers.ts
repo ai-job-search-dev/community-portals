@@ -213,7 +213,7 @@ export function skillNames(v: unknown): string[] {
 
 /**
  * Resolve a streamed RSC text reference (`"$5b"` -> the `5b:T<hexlen>,<text>`
- * chunk). justjoin puts the offer's full HTML description in one of these, so
+ * chunk; the length is a UTF-8 byte count). justjoin puts the offer's full HTML description in one of these, so
  * the detail command can recover the real paragraph and bullet structure that
  * the JSON-LD `description` field has already flattened.
  */
@@ -227,7 +227,11 @@ export function resolveRscRef(payload: string, ref: unknown): string | null {
   const len = parseInt(m[1]!, 16)
   if (!Number.isFinite(len) || len <= 0) return null
   const start = m.index + m[0].length
-  return payload.slice(start, start + len)
+  // React Flight writes the length in UTF-8 bytes, not characters, so slice the
+  // encoded bytes or a description with Polish diacritics overruns into the
+  // next row.
+  const bytes = new TextEncoder().encode(payload.slice(start))
+  return new TextDecoder().decode(bytes.subarray(0, len))
 }
 
 /**

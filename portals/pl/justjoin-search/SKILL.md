@@ -48,6 +48,15 @@ disallows them:
 The pages this skill does read — `/job-offers/…` and `/job-offer/…` — carry no
 `Disallow` rule.
 
+**Terms of service.** justjoin.it's Regulamin (21.04.2020, the version checked) has
+no clause on bots, crawlers or automated reads. § 23(4) does say third parties may
+not copy, modify, reproduce, distribute or download the Service's content in whole
+or in part, and § 23(3) reserves all rights to the content and page layout. That
+wording is broad enough that sustained or bulk automated collection could breach
+it, so this skill stays at personal, low-volume reads of individual search and
+offer pages, and offers no pagination or bulk mode. Re-check the current Regulamin
+before relying on this.
+
 ## When to use this skill
 
 - Search Polish IT job openings by keyword, city, category, seniority or contract type
@@ -62,6 +71,8 @@ The pages this skill does read — `/job-offers/…` and `/job-offer/…` — ca
 ```bash
 bun run .agents/skills/justjoin-search/cli/src/cli.ts search [flags]
 ```
+
+Query syntax: whitespace-separated words, all required, any order. Double quotes do not make an exact phrase (`"symfony developer"` returns the same as `symfony developer`), `OR` is searched as a literal word and returns nothing, and `-word` does not exclude. Use `--workplace`, `--experience` and `--category` to narrow instead.
 
 Key flags:
 - `--query <text>` / `-q <text>` — keyword search (title, skill, technology). Recommended.
