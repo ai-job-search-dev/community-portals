@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Remote Game Jobs</title>
+    <description>Find Remote Jobs in the Game Industry</description>
+    <link>https://remotegamejobs.com/</link>
+    <language>en</language>
+    <atom:link rel="self" type="application/rss+xml" href="https://remotegamejobs.com/feed.rss"/>
+    <item>
+      <title>Believer Entertainment is hiring Game Capture Artist (Unreal) (Remote Job)</title>
+      <link>https://remotegamejobs.com/jobs/believer-entertainment-game-capture-artist-unreal-remote-job-b70c267d-5bde-43af-8eab-cdf8b10e915f</link>
+      <pubDate>Tue, 17 Nov 2026 10:09:25 +0000</pubDate>
+      <guid>https://remotegamejobs.com/jobs/believer-entertainment-game-capture-artist-unreal-remote-job-b70c267d-5bde-43af-8eab-cdf8b10e915f</guid>
+      <description>This is a 4-month, full-time contract role, with the potential to extend or convert. You’ll own video end to end — planning, in-engine capture, and editing — working directly with the team.</description>
+    </item>
+    <item>
+      <title>Skymap Games is hiring Multiplayer Engineer- Unity (Remote Job)</title>
+      <link>https://remotegamejobs.com/jobs/skymap-games-multiplayer-engineer-unity-remote-job</link>
+      <pubDate>Thu, 15 Oct 2026 12:24:00 +0000</pubDate>
+      <guid>https://remotegamejobs.com/jobs/skymap-games-multiplayer-engineer-unity-remote-job</guid>
+      <description>Multiplayer Engineer (Unity)
+ 
+Skymap Games is hiring a Multiplayer Engineer to help deliver a mobile multiplayer game. This is a full-time, fully remote role on a mobile title currently in development in Unity. You'll work primarily on the game's multiplayer functionality, from technical [...]</description>
+    </item>
+  </channel>
+</rss>
