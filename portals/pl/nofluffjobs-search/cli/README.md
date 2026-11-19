@@ -36,21 +36,26 @@ Full flag reference: `../SKILL.md`. Endpoints and parsing anchors:
   tag names do not.
 - **Chunked, fault-tolerant parsing.** Each card is sliced and parsed
   independently; one malformed card cannot break a whole page of results.
-- **Dates cost requests, and that cost is visible.** Listing cards carry no
-  publication date, so `--dates`/`--jobage` fetch one detail page per result and
-  refuse to run without `--limit ≤ 30`, rather than silently fanning out.
-- **Flags are never silently ignored.** An unknown flag, an out-of-vocabulary
-  value, or an unbounded date lookup exits `1` with a JSON error on stderr.
+- **Dates are free, with a bounded fallback.** Listing cards carry no
+  publication date, but the search page's embedded state does, so `--dates` and
+  `--jobage` read it at no extra cost. Only results it leaves undated fall back to
+  one detail request each, at most 30 per search, so no `--limit` is required.
+- **Flags are never silently ignored.** An unknown flag or an out-of-vocabulary
+  value exits `1` with a JSON error on stderr.
 
 ## Test
 
 ```bash
-bun run test        # 47 tests: offline parsing + live smoke tests
+bun run test        # 97 tests, all offline
 bun run typecheck
 ```
 
-`tests/parsing.test.ts` runs offline against fixtures — including the regression
-cases that bit during development: the icon-prefixed company/city fields, the
-`1.5M` abbreviation, and the similar-offers salary leak.
-`tests/search.test.ts` and `tests/cli-flag-validation.test.ts` make a handful of
-real requests, so they fail loudly if the portal's rendering changes.
+Every suite runs offline: in-process tests mock `fetch`, and the CLI child
+processes spawned by `tests/cli-flag-validation.test.ts` preload
+`tests/fixtures/no-network.ts`, which makes any real request throw.
+`tests/parsing.test.ts` covers the parsers against inline HTML — including the regression cases that bit during development: the
+icon-prefixed company/city fields, the `1.5M` abbreviation, and the
+similar-offers salary and city leaks. `tests/output.test.ts` checks the
+`search`/`detail` output contract against a mocked site,
+`tests/cli-flag-validation.test.ts` the flag rules, `tests/retry-backoff.test.ts`
+retries, and `tests/sweep.test.ts` page-state dates and `--all`.

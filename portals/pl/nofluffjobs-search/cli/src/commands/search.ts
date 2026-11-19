@@ -109,7 +109,12 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
   results = results.map((r) => ({ ...r, date: dates.get(r.id) ?? r.date }))
   const fetchedCount = results.length
 
-  if (opts.limit !== undefined && opts.limit >= 0) results = results.slice(0, opts.limit)
+  const limit = opts.limit !== undefined && opts.limit >= 0 ? opts.limit : undefined
+  // Without --jobage, cut first so --dates fetches no detail pages for results
+  // that are dropped anyway. With --jobage the cut must wait for the age filter:
+  // a renewed old offer ranks at the top under sort=newest and would otherwise
+  // take a --limit slot from a fresh one.
+  if (limit !== undefined && opts.jobage === undefined) results = results.slice(0, limit)
   if (opts.dates || opts.jobage !== undefined) {
     const undated = results.filter((r) => !r.date).slice(0, MAX_ENRICHED)
     if (undated.length > 0) {
@@ -117,7 +122,10 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
       results = results.map((r) => (enriched.has(r.id) ? { ...r, date: enriched.get(r.id) ?? null } : r))
     }
   }
-  if (opts.jobage !== undefined) results = filterByAge(results, opts.jobage)
+  if (opts.jobage !== undefined) {
+    results = filterByAge(results, opts.jobage)
+    if (limit !== undefined) results = results.slice(0, limit)
+  }
 
   // More matches on the portal than the 10-page view returned: some were not read.
   const truncated = Boolean(opts.all) && total !== null && total > fetchedCount

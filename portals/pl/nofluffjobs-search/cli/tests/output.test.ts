@@ -168,6 +168,20 @@ describe("search output", () => {
     expect(urls).toHaveLength(1) // dated cards need no detail request
   })
 
+  test("--limit applies after the --jobage filter", async () => {
+    // A renewed old offer sits at the top under sort=newest; it must not take a --limit slot.
+    mockSite(() =>
+      listPage([
+        { slug: "old-renewed", posted: day(40) },
+        { slug: "fresh-1", posted: day(1) },
+        { slug: "fresh-2", posted: day(2) },
+      ]),
+    )
+    const out = capture("stdout")
+    await runSearch({ ...base, jobage: 7, limit: 2 })
+    expect(JSON.parse(out()).results.map((r: { id: string }) => r.id)).toEqual(["fresh-1", "fresh-2"])
+  })
+
   test("--dates fetches a detail page only for undated offers", async () => {
     const urls = mockSite((u) =>
       u.pathname.startsWith("/job/")

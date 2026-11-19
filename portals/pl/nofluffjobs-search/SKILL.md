@@ -63,8 +63,10 @@ Key flags:
 - `--all` — read the 10-page cumulative view (offers 1..200) in **one request**. Hard cap; conflicts with `--page`. When the portal holds more matches than that, `meta.truncated: true` and `PAGE_CAP_REACHED` on stderr. `/scrape` always passes it.
 - `--dates` — fill each result's publication date. **Free**: read from the search page's embedded state. Only results it leaves undated fall back to one detail request each, at most 30 per search.
 - `--jobage <days>` — posted within N calendar days (under `--jobage 1`, yesterday's postings count). Implies `--dates`. No `--limit` needed.
-- `--limit <n>` / `-n <n>` — cap results.
+- `--limit <n>` / `-n <n>` — cap results. With `--jobage`, applied after the age filter.
 - `--format json|table|plain` — default `json`.
+
+Query syntax: `-q` is packed into the `criteria` string as `keyword=<text>`, so `-q "php symfony"` becomes `keyword=php symfony`; the portal requires every word, in any order (same as `keyword=php keyword=symfony`). Double quotes inside the argument narrow to fewer matches (e.g. `-q '"php symfony"'`); `OR` is searched as a literal word and returns nothing; `-word` is ignored.
 
 ### Fetch full job detail
 
@@ -107,7 +109,7 @@ bun run .agents/skills/nofluffjobs-search/cli/src/cli.ts detail mid-senior-symfo
 | `table` | Quick human-readable scanning (title, company, location, posted, salary) |
 | `plain` | Reading a single job's full detail (`detail` command) |
 
-Search JSON is `{ "meta": { "count", "page" }, "results": [...] }`; each result
+Search JSON is `{ "meta": { "count", "page", "total", "truncated" }, "results": [...] }`; each result
 carries `id`, `title`, `company`, `location`, `date`, `url` (the portal-skill
 contract) plus `salary`, `tags` and `extraLocations`. `detail` adds `salaryBands`,
 `deadline`, `requirements`, `tasks`, `description`, `employmentType`, `street` and

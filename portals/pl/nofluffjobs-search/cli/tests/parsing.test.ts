@@ -17,6 +17,7 @@ import {
   parseAllSalaries,
   parseDeadline,
   mainRegion,
+  parseJobDetail,
   filterByAge,
   listingDates,
   buildCriteria,
@@ -207,6 +208,15 @@ describe("detail parsing", () => {
     expect(req).toContain("English (C1)")
     expect(req).not.toContain("id=")
     expect(req).not.toContain("Your responsibilities")
+  })
+
+  test("parseJobDetail ignores the city widget of similar offers", () => {
+    const page = `<html><script type="application/ld+json">{"@type":"JobPosting","title":"PHP Dev"}</script>
+      <div id="posting-header">PHP Dev</div>
+      <nfj-posting-similar>
+        <nfj-posting-item-city data-cy="location on the job offer listing"> Gdansk </nfj-posting-item-city>
+      </nfj-posting-similar></html>`
+    expect(parseJobDetail(page, "php-dev-acme")!.location).toBeNull()
   })
 
   test("parseDeadline reads the offer's validity date", () => {

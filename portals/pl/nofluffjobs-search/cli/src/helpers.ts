@@ -456,9 +456,10 @@ export function parseJobDetail(html: string, id: string): JobDetail | null {
 
   // The detail page's own city widget, used when JSON-LD omits the address (the
   // similar-offers list on the page never contains the posting itself, so the
-  // card fallback cannot help here).
+  // card fallback cannot help here). Read from mainRegion: the similar-offers
+  // cards carry the same widget, with other postings' cities.
   const pageCity = innerText(
-    html,
+    mainRegion(html),
     /<nfj-posting-item-city[^>]*data-cy="location on the job offer listing"[^>]*>/i,
     "</nfj-posting-item-city>",
   )
