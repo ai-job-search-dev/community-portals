@@ -234,9 +234,14 @@ async function main(): Promise<number> {
   return 1
 }
 
+// Set exitCode rather than calling process.exit(): exit() can end the process
+// before a large stdout write has drained into a pipe, truncating the JSON at
+// 64 KB (seen with `search --all | ...`).
 main()
-  .then((code) => process.exit(code))
+  .then((code) => {
+    process.exitCode = code
+  })
   .catch((e) => {
     writeError(e instanceof Error ? e.message : String(e), "INTERNAL_ERROR")
-    process.exit(1)
+    process.exitCode = 1
   })
