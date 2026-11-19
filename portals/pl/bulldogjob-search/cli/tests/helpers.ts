@@ -22,18 +22,3 @@ export async function runCLI(args: string[]): Promise<CLIResult> {
 
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }
-
-export function parseJSON<T = unknown>(result: CLIResult): T {
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `CLI exited with code ${result.exitCode}. stderr: ${result.stderr}`
-    );
-  }
-  try {
-    return JSON.parse(result.stdout) as T;
-  } catch {
-    throw new Error(
-      `Failed to parse JSON. stdout: ${result.stdout}\nstderr: ${result.stderr}`
-    );
-  }
-}
