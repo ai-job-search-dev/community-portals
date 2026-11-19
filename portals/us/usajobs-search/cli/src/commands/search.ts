@@ -53,6 +53,18 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     const data = await apiFetch<ApiSearchResponse>("/api/search", params)
     const items = data.SearchResult?.SearchResultItems ?? []
     let results = items.map((item) => toSearchResult(item.MatchedObjectDescriptor))
+    const totalAvailable = data.SearchResult?.SearchResultCountAll ?? 0
+
+    if (opts.limit !== undefined && opts.limit > results.length && results.length === opts.perPage) {
+      let nextPage = opts.page + 1
+      while (results.length < opts.limit && results.length < totalAvailable) {
+        const more = await apiFetch<ApiSearchResponse>("/api/search", { ...params, Page: String(nextPage) })
+        const moreItems = more.SearchResult?.SearchResultItems ?? []
+        if (moreItems.length === 0) break
+        results.push(...moreItems.map((item) => toSearchResult(item.MatchedObjectDescriptor)))
+        nextPage++
+      }
+    }
 
     if (opts.limit !== undefined) results = results.slice(0, opts.limit)
 

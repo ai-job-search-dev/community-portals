@@ -10,7 +10,7 @@ describe("USAJobs CLI flag validation", () => {
     for (const name of ["days", "page", "per-page", "limit"]) {
       test(`--${name} fractional exits 1 with BAD_ARG`, async () => {
         const result = await runCLI(["search", `--${name}`, "1.5"])
-        expect(result.exitCode).not.toBe(0)
+        expect(result.exitCode).toBe(1)
         const err = parsedStderr(result.stderr)
         expect(err.code).toBe("BAD_ARG")
         expect(err.error).toMatch(new RegExp(name))
@@ -18,20 +18,20 @@ describe("USAJobs CLI flag validation", () => {
 
       test(`--${name} zero exits 1 with BAD_ARG`, async () => {
         const result = await runCLI(["search", `--${name}`, "0"])
-        expect(result.exitCode).not.toBe(0)
+        expect(result.exitCode).toBe(1)
         expect(parsedStderr(result.stderr).code).toBe("BAD_ARG")
       })
 
       test(`--${name} non-numeric string exits 1 with BAD_ARG`, async () => {
         const result = await runCLI(["search", `--${name}`, "foo"])
-        expect(result.exitCode).not.toBe(0)
+        expect(result.exitCode).toBe(1)
         expect(parsedStderr(result.stderr).code).toBe("BAD_ARG")
       })
     }
 
     test("--per-page above 500 exits 1 with BAD_ARG", async () => {
       const result = await runCLI(["search", "--per-page", "501"])
-      expect(result.exitCode).not.toBe(0)
+      expect(result.exitCode).toBe(1)
       expect(parsedStderr(result.stderr).code).toBe("BAD_ARG")
     })
   })
@@ -55,7 +55,7 @@ describe("USAJobs CLI flag validation", () => {
   describe("--format validation", () => {
     test("search with unsupported format exits 1 with BAD_ARG", async () => {
       const result = await runCLI(["search", "--format", "xml"])
-      expect(result.exitCode).not.toBe(0)
+      expect(result.exitCode).toBe(1)
       const err = parsedStderr(result.stderr)
       expect(err.code).toBe("BAD_ARG")
       expect(err.error).toMatch(/format/)
@@ -63,7 +63,7 @@ describe("USAJobs CLI flag validation", () => {
 
     test("detail with table format exits 1 with BAD_ARG", async () => {
       const result = await runCLI(["detail", "USGS-DEF-CA-26-00001", "--format", "table"])
-      expect(result.exitCode).not.toBe(0)
+      expect(result.exitCode).toBe(1)
       expect(parsedStderr(result.stderr).code).toBe("BAD_ARG")
     })
   })
@@ -71,7 +71,7 @@ describe("USAJobs CLI flag validation", () => {
   describe("missing required arguments", () => {
     test("detail without id exits 1 with NO_ID", async () => {
       const result = await runCLI(["detail"])
-      expect(result.exitCode).not.toBe(0)
+      expect(result.exitCode).toBe(1)
       expect(parsedStderr(result.stderr).code).toBe("NO_ID")
     })
 
@@ -88,17 +88,29 @@ describe("USAJobs CLI flag validation", () => {
         new Response(proc.stderr).text(),
         proc.exited,
       ])
-      expect(exitCode).not.toBe(0)
-      expect(stderr).toContain("USAJOBS_API_KEY")
+      expect(exitCode).toBe(1)
+      const err = parsedStderr(stderr.trim())
+      expect(err.code).toBe("API_ERROR")
+      expect(err.error).toContain("USAJOBS_API_KEY")
     })
   })
 
   describe("empty --keyword rejection", () => {
     test("whitespace-only --keyword exits 1 with BAD_ARG", async () => {
       const result = await runCLI(["search", "--keyword", "   "])
-      expect(result.exitCode).not.toBe(0)
+      expect(result.exitCode).toBe(1)
       const err = parsedStderr(result.stderr)
       expect(err.code).toBe("BAD_ARG")
+    })
+  })
+
+  describe("extra positional arguments", () => {
+    test("unquoted multi-word search exits 1 with BAD_ARG", async () => {
+      const result = await runCLI(["search", "software", "engineer"])
+      expect(result.exitCode).toBe(1)
+      const err = parsedStderr(result.stderr)
+      expect(err.code).toBe("BAD_ARG")
+      expect(err.error).toMatch(/quote/)
     })
   })
 
@@ -120,6 +132,13 @@ describe("USAJobs CLI flag validation", () => {
     test("--remote sets RemoteIndicator=True in the request", async () => {
       const { requests } = await runSearchFixture(["search", "--remote", "--limit", "1"])
       expect(requests[0].searchParams.get("RemoteIndicator")).toBe("True")
+    })
+
+    test("--remote does not consume the following keyword argument", async () => {
+      const { result, requests } = await runSearchFixture(["search", "--remote", "-q", "nurse"])
+      expect(result.exitCode).toBe(0)
+      expect(requests[0].searchParams.get("RemoteIndicator")).toBe("True")
+      expect(requests[0].searchParams.get("Keyword")).toBe("nurse")
     })
 
     test("--days sets DatePosted in the request", async () => {

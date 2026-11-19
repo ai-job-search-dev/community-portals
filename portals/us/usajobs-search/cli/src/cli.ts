@@ -8,6 +8,8 @@ interface Flags {
   [k: string]: string | boolean | string[]
 }
 
+const BOOLEAN_FLAGS = new Set(["remote", "help", "h"])
+
 function parseFlags(argv: string[]): Flags {
   const flags: Flags = { _: [] }
   const alias: Record<string, string> = { q: "keyword", l: "location", n: "per-page" }
@@ -17,7 +19,7 @@ function parseFlags(argv: string[]): Flags {
     if (a.startsWith("--") || (a.startsWith("-") && a.length === 2)) {
       const key = alias[a.replace(/^-+/, "")] ?? a.replace(/^-+/, "")
       const next = argv[i + 1]
-      if (next === undefined || next.startsWith("-")) {
+      if (BOOLEAN_FLAGS.has(key) || next === undefined || next.startsWith("-")) {
         flags[key] = true
       } else {
         flags[key] = next
@@ -34,8 +36,8 @@ function parseFlags(argv: string[]): Flags {
 const HELP = `usajobs-cli — search US federal government jobs via the USAJOBS API
 
 SETUP
-  Register at developer.usajobs.gov (free, instant) and set:
-  export USAJOBS_API_KEY="your-registered-email@example.com"
+  Register at developer.usajobs.gov and set your registration email as the key:
+  export USAJOBS_API_KEY="the-email-you-registered-with@example.com"
 
 USAGE
   bun run src/cli.ts search [flags]
@@ -84,7 +86,7 @@ async function main(): Promise<number> {
 
   if (!cmd || flags.help || flags.h) {
     process.stdout.write(HELP)
-    return cmd ? 0 : 1
+    return flags.help || flags.h ? 0 : 1
   }
 
   const knownFlags = KNOWN_FLAGS[cmd]
@@ -102,6 +104,13 @@ async function main(): Promise<number> {
   }
 
   if (cmd === "search") {
+    if ((flags._ as string[]).length > 1) {
+      process.stderr.write(
+        JSON.stringify({ error: 'search takes flags only; quote multi-word keywords: -q "software engineer"', code: "BAD_ARG" }) + "\n",
+      )
+      return 1
+    }
+
     const fmt = flags.format !== undefined ? String(flags.format) : "json"
     if (!["json", "table", "plain"].includes(fmt)) {
       process.stderr.write(
@@ -112,6 +121,11 @@ async function main(): Promise<number> {
 
     if (flags.keyword !== undefined && (typeof flags.keyword !== "string" || !flags.keyword.trim())) {
       process.stderr.write(JSON.stringify({ error: "--keyword requires a non-empty value", code: "BAD_ARG" }) + "\n")
+      return 1
+    }
+
+    if (flags.location !== undefined && (typeof flags.location !== "string" || !flags.location.trim())) {
+      process.stderr.write(JSON.stringify({ error: "--location requires a non-empty value", code: "BAD_ARG" }) + "\n")
       return 1
     }
 

@@ -4,11 +4,11 @@ version: 1.0.0
 description: >
   Use this skill to search for US federal government job openings across all
   agencies (FBI, NASA, DoD, State Department, VA, USPS, etc.), filter by
-  location, keyword, posting age, salary, and remote work. Covers all civilian
-  federal positions across all 50 states, territories, and remote roles. Requires
-  a free USAJOBS developer API key — register at developer.usajobs.gov with just
-  your email. Trigger phrases: federal job, government job, agency hiring,
-  USA jobs, GS grade, civil service, federal position, work for the government.
+  location, keyword, posting age, and remote work. Covers all civilian federal
+  positions across all 50 states, territories, and remote roles. Requires a free
+  USAJOBS developer API key — register at developer.usajobs.gov with your email.
+  Trigger phrases: federal job, government job, agency hiring, USA jobs,
+  civil service, federal position, work for the government.
 context: fork
 enabled: false  # set to true after adding USAJOBS_API_KEY to your environment
 allowed-tools: Bash(bun run .agents/skills/usajobs-search/cli/src/cli.ts *)
@@ -26,19 +26,18 @@ branch agencies** and many legislative/judicial branch roles.
 
 ## Setup (one-time)
 
-1. Register at **developer.usajobs.gov** — provide your name and email, get instant access.
-2. Set the environment variable before running:
+1. Register at **developer.usajobs.gov** — provide your name and email address.
+2. Your registration email **is** your API key. Set it as an environment variable:
    ```bash
-   export USAJOBS_API_KEY="your-registered-email@example.com"
+   export USAJOBS_API_KEY="the-email-you-registered-with@example.com"
    ```
 3. Set `enabled: true` in this SKILL.md (or use `/setup` if your skill has that flow).
 
 ## When to use this skill
 
 - Search for federal job openings in a location or remotely
-- Filter by posting age, remote work, or department/agency
-- Get the full job description and application link for a specific posting
-- Look up salary ranges (GS grade pay scales) across agencies
+- Filter by posting age, remote work, or keyword (title, skill, agency name)
+- Get the job summary and application link for a specific posting
 
 ## Commands
 

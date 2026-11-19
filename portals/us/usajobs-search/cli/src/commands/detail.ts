@@ -20,7 +20,7 @@ interface DetailOutput {
   remote: boolean
   schedule: string
   whoMayApply: string
-  description: string
+  summary: string
 }
 
 /**
@@ -44,7 +44,7 @@ export function normalizePositionId(raw: string): string | null {
     // Reject non-usajobs hosts — a URL from a redirect or look-alike must not
     // become a numeric keyword that happens to match a different job.
     if (host !== "www.usajobs.gov" && host !== "usajobs.gov") return null
-    const m = trimmed.match(/\/job\/(\d+)\/?/)
+    const m = new URL(trimmed).pathname.match(/^\/job\/(\d+)\/?$/)
     return m ? m[1] : null
   }
 
@@ -70,8 +70,7 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     // Prefer exact MatchedObjectId match (numeric URL IDs), then PositionID match.
     const item =
       items.find((i) => i.MatchedObjectId === id) ??
-      items.find((i) => i.MatchedObjectDescriptor.PositionID === id) ??
-      items[0]
+      items.find((i) => i.MatchedObjectDescriptor.PositionID === id)
 
     if (!item) {
       writeError("Job not found", "NOT_FOUND")
@@ -94,7 +93,7 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
       remote: d.UserArea?.Details?.RemoteIndicator ?? false,
       schedule: d.PositionSchedule?.[0]?.Name ?? "",
       whoMayApply: d.UserArea?.Details?.WhoMayApply?.Name ?? "",
-      description: d.UserArea?.Details?.JobSummary ?? "",
+      summary: d.UserArea?.Details?.JobSummary ?? "",
     })
 
     if (opts.format === "json") {
@@ -124,8 +123,8 @@ function outputPlain(data: DetailOutput): void {
   if (data.whoMayApply) console.log(`whoMayApply: ${data.whoMayApply}`)
   console.log(`url: ${data.url}`)
   if (data.applyUrl) console.log(`applyUrl: ${data.applyUrl}`)
-  if (data.description) {
+  if (data.summary) {
     console.log("")
-    console.log(data.description)
+    console.log(data.summary)
   }
 }
