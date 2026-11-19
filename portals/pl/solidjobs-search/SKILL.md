@@ -39,6 +39,10 @@ dependencies**: it runs with just `bun`.
   explicitly allows AI crawlers. The offer pages read by `detail` are allowed.
 - Documented limit: **300 requests/minute per IP**, with responses cached for an
   hour. A normal `/scrape` run makes a handful of calls. Keep it that way.
+- Terms: the [Regulamin](https://solid.jobs/about/terms) (checked 2026-11-19)
+  covers advertisers, accounts and payments only. It says nothing about the API,
+  automated access or reuse of offer pages, and the API page invites aggregators
+  and AI agents to use the API.
 
 ## When to use this skill
 
@@ -54,6 +58,8 @@ dependencies**: it runs with just `bun`.
 ```bash
 bun run .agents/skills/solidjobs-search/cli/src/cli.ts search [flags]
 ```
+
+Query syntax: phrase quoting not honoured (quote characters are searched literally and return nothing); no OR, no `-word` exclusion. The whole `--query` is matched as one case-insensitive substring, so word order and spacing count: `php dev` matches "PHP Developer", `developer php` matches nothing.
 
 Key flags:
 - `--query <text>` / `-q <text>`: full-text search (title, technology, skill). Recommended.
@@ -80,8 +86,9 @@ bun run .agents/skills/solidjobs-search/cli/src/cli.ts detail <id|url> [--format
 ```
 
 `id` is the short code from a `search` result (e.g. `mo6txlr4`). A short link
-(`https://solid.jobs/o/<code>`) or a full offer URL
-(`https://solid.jobs/offer/<number>/<slug>`) works too. Returns the full
+(`https://solid.jobs/o/<code>`), a full offer URL
+(`https://solid.jobs/offer/<number>/<slug>`) or the bare offer number works too.
+For a full URL, `detail` reports the offer number as `id`. Returns the full
 description (paragraphs and bullet lists preserved), salary, contract type,
 required experience in months, skills, posting date, deadline, and `isActive`.
 
