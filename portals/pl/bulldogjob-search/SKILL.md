@@ -23,7 +23,7 @@ Polish or English; salary ranges are mostly shown.
 ## ⚠️ Personal use only
 
 This reads Bulldogjob's public pages. `robots.txt` permits `/companies/jobs`. The
-[Regulamin](https://bulldogjob.pl/terms/general) (PDF) has no clause on bots, scrapers or
+[Regulamin](https://bulldogjob.pl/terms/general) has no clause on bots, scrapers or
 automated access; the closest is § 16 ust. 3:
 
 > Pracodawca, Użytkownik oraz osoby trzecie nie są uprawnione do kopiowania,
@@ -32,9 +32,11 @@ automated access; the closest is § 16 ust. 3:
 
 ("Employers, Users and third parties may not copy, modify, reproduce, distribute or
 download all or part of the Service's content.") That is a copyright clause in a section
-titled *Prawa autorskie Serwisu*. It targets reusing the site's content, not a person
-reading offers one page at a time, which is what this skill does for one user. Read
-offers here, don't republish or store them in bulk. **Keep volume low, don't use it
+titled *Prawa autorskie Serwisu*. Our reading is that it targets reusing the site's
+content, not a person reading offers one page at a time, which is what this skill does
+for one user. The clause does name users and "pobierania" (downloading), and Bulldogjob
+has not confirmed either reading, so check the current terms yourself. Read offers here,
+don't republish or store them in bulk. **Keep volume low, don't use it
 commercially or for bulk data collection**, and run it on your own responsibility.
 
 ## No free-text search - how `--query` works
@@ -58,7 +60,7 @@ bun run .agents/skills/bulldogjob-search/cli/src/cli.ts search [flags]
 bun run .agents/skills/bulldogjob-search/cli/src/cli.ts detail <id|slug|url> [--format json|plain]
 ```
 
-Query syntax: no phrase quoting (a `"` is kept as a literal character and then matches nothing) and no OR or other operators; the first word of `--query` is the skill filter, every further word must appear in the title or tags.
+Query syntax: no phrase quoting (a `"` is kept as a literal character and then matches nothing) and no OR or other operators; without `--skill`, the first word of `--query` is the skill filter and every further word must appear in the title or tags, while with `--skill` every query word is a title/tag term.
 
 ### Search flags
 
@@ -70,7 +72,7 @@ Query syntax: no phrase quoting (a `"` is kept as a literal character and then m
 | `--level` | `junior` \| `medium` \| `senior` \| `lead` |
 | `--city`, `-l` | `Remote`, Warszawa, Kraków, Wrocław, Gdańsk, Łódź, Poznań, Katowice, Białystok, Rzeszów, Lublin (case/diacritics-insensitive). Anything else exits 1 |
 | `--jobage <days>` | Posted within N calendar days (`--jobage 1` includes today and yesterday). **Client-side**: list pages carry no date, so this reads each result's detail page (one request per result, 300 ms apart). Implies `--dates`. An offer whose date lookup failed is kept with `date: null` (and reported as `DATE_LOOKUP_FAILED` on stderr), so not every result is guaranteed to be within N days |
-| `--dates` | Fill `date`/`postedAt` for every result (same extra requests). Without `--jobage`, `--limit` is applied first, so only the emitted offers are looked up. If a detail page stays rate-limited (429) after retries, lookups stop and the rest are reported as `DATE_LOOKUP_FAILED` |
+| `--dates` | Fill `date`/`postedAt` for every result (same extra requests). Without `--jobage`, `--limit` is applied first, so only the emitted offers are looked up: `--dates --limit N` keeps the N highest offer ids (newest by creation), not the N latest `publishedAt`. If a detail page stays rate-limited (429) after retries, lookups stop and the rest are reported as `DATE_LOOKUP_FAILED` |
 | `--page <n>` | 1-indexed, 50 offers per page |
 | `--all` | Sweep pages until one adds nothing (cap 10 pages = 500 offers; warns `PAGE_CAP_REACHED` only when the portal reports offers beyond the cap) |
 | `--limit`, `-n` | Cap results emitted |

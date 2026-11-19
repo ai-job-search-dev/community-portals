@@ -57,7 +57,8 @@ SEARCH FLAGS
   --dates              Fill date/postedAt for every result (one extra request per result).
   --page <n>           1-indexed page (50 offers/page). Default 1. Not combinable with title words.
   --all                Sweep pages until one adds nothing (hard cap 10 pages = 500 offers).
-  --limit, -n <n>      Cap results emitted (client-side).
+  --limit, -n <n>      Cap results emitted (client-side). Without --jobage it is applied before
+                       date lookups, so --dates --limit N keeps the N highest offer ids.
   --format <fmt>       json (default) | table | plain.
 
 Results are sorted newest first (by date when known, else by offer id).
