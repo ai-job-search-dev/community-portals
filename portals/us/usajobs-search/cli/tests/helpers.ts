@@ -67,6 +67,54 @@ export async function runSearchFixture(args: string[]): Promise<{ result: CLIRes
   }
 }
 
+/**
+ * Like runSearchFixture but serves a different JSON body per page number.
+ * The server reads the `Page` query param and calls pageBody(page) for the response.
+ */
+export async function runSearchMultiPageFixture(
+  args: string[],
+  pageBody: (page: number) => object,
+): Promise<{ result: CLIResult; requests: URL[] }> {
+  const requests: URL[] = []
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch(request) {
+      const url = new URL(request.url)
+      requests.push(url)
+      const page = parseInt(url.searchParams.get("Page") ?? "1", 10)
+      try {
+        return new Response(JSON.stringify(pageBody(page)), {
+          headers: { "Content-Type": "application/json" },
+        })
+      } catch {
+        return new Response("Internal Server Error", { status: 500 })
+      }
+    },
+  })
+
+  const dir = mkdtempSync(join(tmpdir(), "usajobs-multipage-"))
+  const preload = join(dir, "fetch.ts")
+  writeFileSync(
+    preload,
+    `
+    const original = globalThis.fetch;
+    globalThis.fetch = (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.origin !== "https://data.usajobs.gov") throw new Error("unexpected host: " + url.origin);
+      return original(${JSON.stringify(server.url.origin)} + url.pathname + url.search, init);
+    };
+    `,
+  )
+
+  try {
+    return { result: await runCLI(args, preload), requests }
+  } finally {
+    server.stop(true)
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
 export function parseJSON<T = unknown>(result: CLIResult): T {
   if (result.exitCode !== 0) {
     throw new Error(`CLI exited with code ${result.exitCode}. stderr: ${result.stderr}`)

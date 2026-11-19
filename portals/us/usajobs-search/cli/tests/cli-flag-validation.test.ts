@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { runCLI, runSearchFixture } from "./helpers"
+import { runCLI, runSearchFixture, runSearchMultiPageFixture } from "./helpers"
 
 function parsedStderr(stderr: string): { error?: string; code?: string } {
   try { return JSON.parse(stderr) } catch { return {} }
@@ -160,6 +160,61 @@ describe("USAJobs CLI flag validation", () => {
       expect(typeof job.company).toBe("string")
       expect(typeof job.location).toBe("string")
       expect(typeof job.url).toBe("string")
+    })
+  })
+
+  describe("multi-page pagination", () => {
+    function makePageBody(page: number, perPage: number) {
+      const items = Array.from({ length: perPage }, (_, i) => ({
+        MatchedObjectId: `${page}${String(i).padStart(7, "0")}`,
+        MatchedObjectDescriptor: {
+          PositionID: `TEST-${page}-${i}`,
+          PositionTitle: `Job ${page}-${i}`,
+          PositionURI: `https://www.usajobs.gov/job/${page}${i}/`,
+          PositionLocationDisplay: "Remote",
+          OrganizationName: "Test Agency",
+          PositionSchedule: [{ Name: "Full-Time", Code: "1" }],
+          PositionRemuneration: [],
+          PublicationStartDate: "2026-11-01T00:00:00Z",
+          ApplicationCloseDate: "2026-11-30T00:00:00Z",
+          UserArea: { Details: { RemoteIndicator: false } },
+        },
+      }))
+      return {
+        SearchResult: {
+          SearchResultCount: perPage,
+          SearchResultCountAll: 100,
+          SearchResultItems: items,
+        },
+      }
+    }
+
+    test("fetches page 2 when --limit exceeds one page", async () => {
+      const perPage = 2
+      const { result, requests } = await runSearchMultiPageFixture(
+        ["search", "-q", "nurse", `--per-page`, String(perPage), "--limit", "3"],
+        (page) => makePageBody(page, perPage),
+      )
+      expect(result.exitCode).toBe(0)
+      expect(requests).toHaveLength(2)
+      expect(requests[0].searchParams.get("Page")).toBe("1")
+      expect(requests[1].searchParams.get("Page")).toBe("2")
+      const output = JSON.parse(result.stdout)
+      expect(output.meta.count).toBe(3)
+    })
+
+    test("partial results are kept when a later page fails", async () => {
+      const { result, requests } = await runSearchMultiPageFixture(
+        ["search", "-q", "nurse", "--per-page", "2", "--limit", "4"],
+        (page) => {
+          if (page === 2) throw new Error("simulated 500")
+          return makePageBody(page, 2)
+        },
+      )
+      expect(requests.length).toBeGreaterThanOrEqual(1)
+      const output = JSON.parse(result.stdout)
+      expect(output.results.length).toBeGreaterThan(0)
+      expect(result.stderr).toContain("API_ERROR")
     })
   })
 })

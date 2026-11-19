@@ -58,7 +58,16 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     if (opts.limit !== undefined && opts.limit > results.length && results.length === opts.perPage) {
       let nextPage = opts.page + 1
       while (results.length < opts.limit && results.length < totalAvailable) {
-        const more = await apiFetch<ApiSearchResponse>("/api/search", { ...params, Page: String(nextPage) })
+        let more: ApiSearchResponse
+        try {
+          more = await apiFetch<ApiSearchResponse>("/api/search", { ...params, Page: String(nextPage) })
+        } catch (pageErr) {
+          writeError(
+            `page ${nextPage} failed: ${pageErr instanceof Error ? pageErr.message : String(pageErr)}`,
+            "API_ERROR",
+          )
+          break
+        }
         const moreItems = more.SearchResult?.SearchResultItems ?? []
         if (moreItems.length === 0) break
         results.push(...moreItems.map((item) => toSearchResult(item.MatchedObjectDescriptor)))
