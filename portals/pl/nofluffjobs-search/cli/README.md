@@ -50,12 +50,12 @@ bun run test        # 97 tests, all offline
 bun run typecheck
 ```
 
-Every suite runs offline: in-process tests mock `fetch`, and the CLI child
-processes spawned by `tests/cli-flag-validation.test.ts` preload
+Every suite runs offline: in-process tests mock `fetch`, and every CLI child
+process spawned through `runCLI` (`tests/helpers.ts`) preloads
 `tests/fixtures/no-network.ts`, which makes any real request throw.
-`tests/parsing.test.ts` covers the parsers against inline HTML — including the regression cases that bit during development: the
-icon-prefixed company/city fields, the `1.5M` abbreviation, and the
-similar-offers salary and city leaks. `tests/output.test.ts` checks the
+`tests/parsing.test.ts` covers the parsers against inline HTML — including the
+regression cases that bit during development: the icon-prefixed company/city
+fields, the `1.5M` abbreviation, and the similar-offers salary and city leaks. `tests/output.test.ts` checks the
 `search`/`detail` output contract against a mocked site,
 `tests/cli-flag-validation.test.ts` the flag rules, `tests/retry-backoff.test.ts`
 retries, and `tests/sweep.test.ts` page-state dates and `--all`.
