@@ -40,9 +40,12 @@ dependencies**: it runs with just `bun`.
 - Documented limit: **300 requests/minute per IP**, with responses cached for an
   hour. A normal `/scrape` run makes a handful of calls. Keep it that way.
 - Terms: the [Regulamin](https://solid.jobs/about/terms) (checked 2026-11-19)
-  covers advertisers, accounts and payments only. It says nothing about the API,
-  automated access or reuse of offer pages, and the API page invites aggregators
-  and AI agents to use the API.
+  binds every visitor. Its §7 bars copying, distributing or otherwise using the
+  site's works and databases beyond *dozwolony użytek* (statutory permitted use),
+  and using the site in a way that burdens it. It does not mention the API or
+  automated access. The API page invites aggregators and AI agents to use the
+  API, but that invitation does not by itself cover reusing offer-page content.
+  Keep results for your own job search and do not republish them.
 
 ## When to use this skill
 
