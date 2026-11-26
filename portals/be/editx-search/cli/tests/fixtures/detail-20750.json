@@ -1,0 +1,114 @@
+{
+  "id": "20750",
+  "title": "Python Developer | Financial Sector",
+  "status": "online",
+  "contentLanguages": [
+    "en"
+  ],
+  "onlineDate": {
+    "value": "2026-11-17 08:10:22",
+    "timezone": "UTC",
+    "label": "17/11/2026",
+    "timestamp": 1794903022
+  },
+  "changed": {
+    "value": "2026-11-17 08:10:22",
+    "timezone": "UTC",
+    "label": "17/11/2026",
+    "timestamp": 1794903022
+  },
+  "country": {
+    "id": "25",
+    "label": "Belgium",
+    "code": "BE"
+  },
+  "areas": [
+    {
+      "id": "3408",
+      "label": "Flemish Brabant"
+    }
+  ],
+  "postalCode": "1930",
+  "locality": "Zaventem",
+  "address": "Zaventem",
+  "company": {
+    "id": "24984",
+    "label": "Sander",
+    "changed": {
+      "value": "2026-08-11 09:11:44",
+      "timezone": "UTC",
+      "label": "11/08/2026 09:11:44",
+      "timestamp": 1786439504
+    },
+    "description": "<h3 id=\"results-title\">Our Journey Towards <span>Innovation</span> and <span>Integrity</span></h3><p>Sander is an audacious recruitment start-up &amp; HR-tech specializing in Finance, IT and HR services. Our philosophy is centered on understanding our clients' and talents' needs, goals, and skills while putting people, innovation, and integrity at the heart of our interests. In just three success years, we grew to a team of 30 people and successfully took care of more than 600 careers for our clients, ranging from startups to multinationals. Based in Brussels, we operate through different professional networks and offer quality services tailor made.</p><p>&nbsp;</p><h3 id=\"content-with-large-and-small-img-title\"><span>Personalized Talent</span> Recruitment Solutions</h3><p>At Sander, we believe in the power of personalized recruitment solutions. We listen attentively to your needs, objectives, and situation to provide tailored advice and solutions. Whether you are a company searching for the perfect HR, IT and Finance talent or a candidate seeking your dream job, we focus our research on your specific expectations and cultural fit to create the perfect match. Let us help you find the perfect long-term professional partnership.</p><p>&nbsp;</p><h4 id=\"expertise-card-title\">Technology</h4><p>Our IT advisors are the best in understanding ICT requirements and catching remarkable technology opportunities. We help our partners grow by finding the most passionate talents in fields as : Software development (back-end, frontend), Insfrastructure &amp; Cloud, Security, Business Analysis, Data and Project Management.</p>",
+    "address": "Primary Triomflaan",
+    "area": {
+      "id": "3329",
+      "label": "Brussels"
+    },
+    "country": {
+      "id": "25",
+      "label": "Belgium"
+    },
+    "website": "https://www.wearesander.com/en/",
+    "careersite": "https://www.wearesander.com/en/",
+    "countJobOnline": 153,
+    "countChallengeOnline": 0,
+    "numberOfEmployees": {
+      "id": "3013",
+      "label": "11 - 50"
+    },
+    "industry": {
+      "id": "17317",
+      "label": "Staffing & Recruiting"
+    }
+  },
+  "contracts": [
+    {
+      "id": "22",
+      "label": "permanent"
+    }
+  ],
+  "remote": {
+    "id": "17352",
+    "label": ">50% remote"
+  },
+  "skills": [
+    {
+      "id": "16866",
+      "label": "Python"
+    }
+  ],
+  "languages": [
+    "en"
+  ],
+  "shortDescription": "Sander is looking for developer / programmer in Flemish Brabant with python skills",
+  "role": "<p>Our partner, a company in the financial sector, is looking for a <strong>Python Developer</strong> with an interest in<strong> React.</strong></p><p>Our partner is one of the major players in the global financial industry. They operate across all continents and have offices in every major city.</p><p>Today, this organization aims to develop in-house software to digitalize the Tax department.</p><p>You will have the opportunity to grow within an international company and play a strategic role in this digitalization project.</p><h2>Python Developer – The Role:</h2><p>You will be responsible for developing internal applications and will take full ownership of this project from scratch. Your responsibilities will include:</p><ul><li>Ensuring the reliability, scalability, and maintainability of the automation infrastructure.</li><li>Integrating auditability and data protection from the design phase (structured logs, restart capabilities, access controls).</li><li>Contributing to a culture of continuous improvement, transparency, and knowledge sharing.</li><li>Optimizing Python RPA scripts for tax processes.</li><li>Designing and building dashboards based on React.</li></ul>",
+  "profile": "<h2>Python Developer – The Profile:</h2><ul><li>You have between 5 and 10 years of experience in Python development.</li><li>You have initial experience in React development.</li><li>You are familiar with containerization (Docker) and CI/CD.</li><li>You have a product-oriented mindset and are solution-driven.</li><li>You speak English; French or Dutch is a plus.</li><li>You have experience in accounting, tax, or finance.</li></ul>",
+  "proposal": "<h2>Python Developer – The Offer:</h2><ul><li>An attractive salary between €4.000 and €5.500 gross (depending on experience).</li><li>A company car or mobility budget.</li><li>Additional benefits (meal vouchers, net expenses, insurance, etc.).</li><li>Easy access with parking available.</li><li>Flexible working hours.</li><li>A hybrid working model with 2 to 3 days of remote work per week.</li><li>The opportunity to contribute to a strategic project within one of the world’s largest financial institutions.</li><li>Responsibilities and real impact on development.</li></ul><h2>Benefits</h2><ul><li>Company Car</li><li>Meal Vouchers</li><li>Fuel Card</li><li>Mobility Budget</li><li>Net Expenses</li><li>Company phone &amp; subscription</li><li>Internal &amp; External trainings</li><li>End-of-year bonuses</li><li>Group Insurance</li><li>Health Insurance</li><li>2 days remote</li><li>Flexible holidays</li><li>32 days off</li><li>Flexible working hours</li><li>Parking</li></ul>",
+  "functions": [
+    {
+      "id": "5",
+      "label": "Developer / Programmer"
+    }
+  ],
+  "experiences": [
+    {
+      "id": "14",
+      "label": "5 - 10 years"
+    }
+  ],
+  "educations": [
+    {
+      "id": "18",
+      "label": "bachelor degree"
+    },
+    {
+      "id": "19",
+      "label": "master degree"
+    }
+  ],
+  "openToApply": true,
+  "applicationType": "url",
+  "applicationAction": "https://www.wearesander.com/en/jobs/python-developer-financial-sector/89480"
+}

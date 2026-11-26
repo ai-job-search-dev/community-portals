@@ -1,0 +1,237 @@
+{
+  "total": 10,
+  "page": 0,
+  "count": "3",
+  "jobs": [
+    {
+      "id": "20750",
+      "title": "Python Developer | Financial Sector",
+      "status": "online",
+      "contentLanguages": [
+        "en"
+      ],
+      "onlineDate": {
+        "value": "2026-11-17 08:10:22",
+        "timezone": "UTC",
+        "label": "17/11/2026",
+        "timestamp": 1794903022
+      },
+      "changed": {
+        "value": "2026-11-17 08:10:22",
+        "timezone": "UTC",
+        "label": "17/11/2026",
+        "timestamp": 1794903022
+      },
+      "country": {
+        "id": "25",
+        "label": "Belgium",
+        "code": "BE"
+      },
+      "areas": [
+        {
+          "id": "3408",
+          "label": "Flemish Brabant"
+        }
+      ],
+      "postalCode": "1930",
+      "locality": "Zaventem",
+      "address": "Zaventem",
+      "company": {
+        "id": "24984",
+        "label": "Sander"
+      },
+      "contracts": [
+        {
+          "id": "22",
+          "label": "permanent"
+        }
+      ],
+      "remote": {
+        "id": "17352",
+        "label": ">50% remote"
+      },
+      "skills": [
+        {
+          "id": "16866",
+          "label": "Python",
+          "icon": {
+            "id": "40144",
+            "url": "https://api.editx.eu/sites/default/files/etags/icons/2024-03/Python.webp",
+            "png_w1200": "https://api.editx.eu/sites/default/files/styles/png_w1200/public/etags/icons/2024-03/Python.webp.png",
+            "webp_w40": "https://api.editx.eu/sites/default/files/styles/webp_w40/public/etags/icons/2024-03/Python.webp",
+            "webp_w64": "https://api.editx.eu/sites/default/files/styles/webp_w64/public/etags/icons/2024-03/Python.webp",
+            "webp_w100": "https://api.editx.eu/sites/default/files/styles/webp_w100/public/etags/icons/2024-03/Python.webp",
+            "webp_w128": "https://api.editx.eu/sites/default/files/styles/webp_w128/public/etags/icons/2024-03/Python.webp",
+            "webp_w200": "https://api.editx.eu/sites/default/files/styles/webp_w200/public/etags/icons/2024-03/Python.webp",
+            "webp_w256": "https://api.editx.eu/sites/default/files/styles/webp_w256/public/etags/icons/2024-03/Python.webp",
+            "webp_w512": "https://api.editx.eu/sites/default/files/styles/webp_w512/public/etags/icons/2024-03/Python.webp",
+            "webp_w600": "https://api.editx.eu/sites/default/files/styles/webp_w600/public/etags/icons/2024-03/Python.webp",
+            "webp_w716": "https://api.editx.eu/sites/default/files/styles/webp_w716/public/etags/icons/2024-03/Python.webp",
+            "webp_w910": "https://api.editx.eu/sites/default/files/styles/webp_w910/public/etags/icons/2024-03/Python.webp",
+            "webp_w1200": "https://api.editx.eu/sites/default/files/styles/webp_w1200/public/etags/icons/2024-03/Python.webp"
+          }
+        }
+      ]
+    },
+    {
+      "id": "17038",
+      "title": "Inhouse Data Engineer",
+      "status": "online",
+      "contentLanguages": [
+        "nl"
+      ],
+      "onlineDate": {
+        "value": "2026-04-15 14:34:41",
+        "timezone": "UTC",
+        "label": "more than 1 month",
+        "timestamp": 1776263681
+      },
+      "changed": {
+        "value": "2026-04-15 14:34:41",
+        "timezone": "UTC",
+        "label": "15/04/2026",
+        "timestamp": 1776263681
+      },
+      "country": {
+        "id": "25",
+        "label": "Belgium",
+        "code": "BE"
+      },
+      "areas": [
+        {
+          "id": "3408",
+          "label": "Flemish Brabant"
+        }
+      ],
+      "postalCode": "3300",
+      "locality": "Tienen",
+      "address": "Tienen",
+      "company": {
+        "id": "25234",
+        "label": "CLOVR"
+      },
+      "contracts": [
+        {
+          "id": "22",
+          "label": "permanent"
+        }
+      ],
+      "remote": {
+        "id": "17351",
+        "label": "<50% remote"
+      },
+      "skills": [
+        {
+          "id": "16866",
+          "label": "Python",
+          "icon": {
+            "id": "40144",
+            "url": "https://api.editx.eu/sites/default/files/etags/icons/2024-03/Python.webp",
+            "png_w1200": "https://api.editx.eu/sites/default/files/styles/png_w1200/public/etags/icons/2024-03/Python.webp.png",
+            "webp_w40": "https://api.editx.eu/sites/default/files/styles/webp_w40/public/etags/icons/2024-03/Python.webp",
+            "webp_w64": "https://api.editx.eu/sites/default/files/styles/webp_w64/public/etags/icons/2024-03/Python.webp",
+            "webp_w100": "https://api.editx.eu/sites/default/files/styles/webp_w100/public/etags/icons/2024-03/Python.webp",
+            "webp_w128": "https://api.editx.eu/sites/default/files/styles/webp_w128/public/etags/icons/2024-03/Python.webp",
+            "webp_w200": "https://api.editx.eu/sites/default/files/styles/webp_w200/public/etags/icons/2024-03/Python.webp",
+            "webp_w256": "https://api.editx.eu/sites/default/files/styles/webp_w256/public/etags/icons/2024-03/Python.webp",
+            "webp_w512": "https://api.editx.eu/sites/default/files/styles/webp_w512/public/etags/icons/2024-03/Python.webp",
+            "webp_w600": "https://api.editx.eu/sites/default/files/styles/webp_w600/public/etags/icons/2024-03/Python.webp",
+            "webp_w716": "https://api.editx.eu/sites/default/files/styles/webp_w716/public/etags/icons/2024-03/Python.webp",
+            "webp_w910": "https://api.editx.eu/sites/default/files/styles/webp_w910/public/etags/icons/2024-03/Python.webp",
+            "webp_w1200": "https://api.editx.eu/sites/default/files/styles/webp_w1200/public/etags/icons/2024-03/Python.webp"
+          }
+        }
+      ]
+    },
+    {
+      "id": "17704",
+      "title": "Ervaren Data Engineer - interne functie!",
+      "status": "online",
+      "contentLanguages": [
+        "nl"
+      ],
+      "onlineDate": {
+        "value": "2026-05-21 07:03:15",
+        "timezone": "UTC",
+        "label": "more than 1 month",
+        "timestamp": 1779346995
+      },
+      "changed": {
+        "value": "2026-05-21 07:03:15",
+        "timezone": "UTC",
+        "label": "21/05/2026",
+        "timestamp": 1779346995
+      },
+      "country": {
+        "id": "25",
+        "label": "Belgium",
+        "code": "BE"
+      },
+      "areas": [
+        {
+          "id": "3408",
+          "label": "Flemish Brabant"
+        }
+      ],
+      "postalCode": "3300",
+      "locality": "Tienen",
+      "address": "Tienen",
+      "company": {
+        "id": "25234",
+        "label": "CLOVR"
+      },
+      "contracts": [
+        {
+          "id": "22",
+          "label": "permanent"
+        }
+      ],
+      "remote": {
+        "id": "17351",
+        "label": "<50% remote"
+      },
+      "skills": [
+        {
+          "id": "16662",
+          "label": "SQL",
+          "icon": {
+            "id": "28042",
+            "url": "https://api.editx.eu/sites/default/files/etags/icons/2023-09/sql.png",
+            "png_w1200": "https://api.editx.eu/sites/default/files/styles/png_w1200/public/etags/icons/2023-09/sql.png",
+            "webp_w40": "https://api.editx.eu/sites/default/files/styles/webp_w40/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w64": "https://api.editx.eu/sites/default/files/styles/webp_w64/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w100": "https://api.editx.eu/sites/default/files/styles/webp_w100/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w128": "https://api.editx.eu/sites/default/files/styles/webp_w128/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w200": "https://api.editx.eu/sites/default/files/styles/webp_w200/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w256": "https://api.editx.eu/sites/default/files/styles/webp_w256/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w512": "https://api.editx.eu/sites/default/files/styles/webp_w512/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w600": "https://api.editx.eu/sites/default/files/styles/webp_w600/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w716": "https://api.editx.eu/sites/default/files/styles/webp_w716/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w910": "https://api.editx.eu/sites/default/files/styles/webp_w910/public/etags/icons/2023-09/sql.png.webp",
+            "webp_w1200": "https://api.editx.eu/sites/default/files/styles/webp_w1200/public/etags/icons/2023-09/sql.png.webp"
+          }
+        },
+        {
+          "id": "16866",
+          "label": "Python",
+          "icon": {
+            "id": "40144",
+            "url": "https://api.editx.eu/sites/default/files/etags/icons/2024-03/Python.webp",
+            "png_w1200": "https://api.editx.eu/sites/default/files/styles/png_w1200/public/etags/icons/2024-03/Python.webp.png",
+            "webp_w40": "https://api.editx.eu/sites/default/files/styles/webp_w40/public/etags/icons/2024-03/Python.webp",
+            "webp_w64": "https://api.editx.eu/sites/default/files/styles/webp_w64/public/etags/icons/2024-03/Python.webp",
+            "webp_w100": "https://api.editx.eu/sites/default/files/styles/webp_w100/public/etags/icons/2024-03/Python.webp",
+            "webp_w128": "https://api.editx.eu/sites/default/files/styles/webp_w128/public/etags/icons/2024-03/Python.webp",
+            "webp_w200": "https://api.editx.eu/sites/default/files/styles/webp_w200/public/etags/icons/2024-03/Python.webp",
+            "webp_w256": "https://api.editx.eu/sites/default/files/styles/webp_w256/public/etags/icons/2024-03/Python.webp",
+            "webp_w512": "https://api.editx.eu/sites/default/files/styles/webp_w512/public/etags/icons/2024-03/Python.webp",
+            "webp_w600": "https://api.editx.eu/sites/default/files/styles/webp_w600/public/etags/icons/2024-03/Python.webp",
+            "webp_w716": "https://api.editx.eu/sites/default/files/styles/webp_w716/public/etags/icons/2024-03/Python.webp",
+            "webp_w910": "https://api.editx.eu/sites/default/files/styles/webp_w910/public/etags/icons/2024-03/Python.webp",
+            "webp_w1200": "https://api.editx.eu/sites/default/files/styles/webp_w1200/public/etags/icons/2024-03/Python.webp"
+          }
+        }
+      ]
+    }
+  ]
+}
