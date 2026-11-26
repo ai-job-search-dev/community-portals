@@ -1,0 +1,56 @@
+{
+  "offset": 0,
+  "limit": 20,
+  "totalFound": 3,
+  "content": [
+    {
+      "id": "744000163798847",
+      "name": "Internship in Human Resources",
+      "refNumber": "REF301888O",
+      "releasedDate": "2026-11-26T01:35:46.608Z",
+      "visibility": "PUBLIC",
+      "company": { "identifier": "BoschGroup", "name": "Bosch Group" },
+      "location": {
+        "city": "Batu Kawan",
+        "region": "Penang",
+        "country": "my",
+        "remote": false,
+        "fullLocation": "Batu Kawan, Penang, Malaysia"
+      },
+      "department": {},
+      "function": { "id": "manufacturing", "label": "Manufacturing" },
+      "industry": { "id": "semiconductors", "label": "Semiconductors" },
+      "typeOfEmployment": { "id": "permanent", "label": "Full-time" },
+      "experienceLevel": { "id": "internship", "label": "Internship" },
+      "language": { "code": "en" }
+    },
+    {
+      "id": "744000163798848",
+      "name": "Senior Software Engineer",
+      "refNumber": "REF402",
+      "releasedDate": "2026-11-20T10:00:00.000Z",
+      "visibility": "PUBLIC",
+      "company": { "identifier": "BoschGroup", "name": "Bosch Group" },
+      "location": { "city": "Berlin", "region": "Berlin", "country": "de", "remote": true, "fullLocation": "Berlin, Germany" },
+      "department": { "id": 12, "label": "Engineering" },
+      "function": { "id": "engineering", "label": "Engineering" },
+      "industry": { "id": "semiconductors", "label": "Semiconductors" },
+      "typeOfEmployment": { "id": "permanent", "label": "Full-time" },
+      "experienceLevel": { "id": "mid_senior_level", "label": "Mid-Senior Level" },
+      "language": { "code": "en" }
+    },
+    {
+      "id": "744000163798849",
+      "name": "Warehouse Team Lead",
+      "releasedDate": "2026-10-01T08:00:00.000Z",
+      "visibility": "PUBLIC",
+      "company": { "identifier": "BoschGroup", "name": "Bosch Group" },
+      "location": { "fullLocation": "Penang, Malaysia", "remote": false },
+      "department": { "id": 13, "label": "Operations" },
+      "function": { "id": "logistics", "label": "Logistics" },
+      "typeOfEmployment": { "id": "fixed_term", "label": "Contract" },
+      "experienceLevel": { "id": "entry_level", "label": "Entry Level" },
+      "language": { "code": "en" }
+    }
+  ]
+}
