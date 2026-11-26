@@ -1,0 +1,20 @@
+{
+  "name": "icims-cli",
+  "version": "1.0.0",
+  "description": "CLI for reading employer job portals hosted on iCIMS from their public HTML — no authentication, zero runtime dependencies.",
+  "type": "module",
+  "main": "src/cli.ts",
+  "bin": {
+    "icims-search": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "test": "bun test --timeout 30000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/bun": "1.4.4"
+  }
+}
