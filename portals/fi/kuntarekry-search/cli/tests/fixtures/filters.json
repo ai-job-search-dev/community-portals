@@ -1,0 +1,190 @@
+{
+  "locations": [
+    {
+      "id": 39056,
+      "title": "Kanta-Häme",
+      "type": "region",
+      "children": [
+        {
+          "id": 39066,
+          "title": "Hämeenlinna",
+          "type": "location"
+        }
+      ]
+    },
+    {
+      "id": 39258,
+      "title": "Pohjanmaa",
+      "type": "region",
+      "children": [
+        {
+          "id": 39288,
+          "title": "Vaasa",
+          "type": "location"
+        }
+      ]
+    },
+    {
+      "id": 39494,
+      "title": "Uusimaa",
+      "type": "region",
+      "children": [
+        {
+          "id": 39496,
+          "title": "Espoo",
+          "type": "location"
+        },
+        {
+          "id": 39498,
+          "title": "Hanko",
+          "type": "location"
+        },
+        {
+          "id": 39500,
+          "title": "Helsinki",
+          "type": "location"
+        },
+        {
+          "id": 39510,
+          "title": "Kauniainen",
+          "type": "location"
+        },
+        {
+          "id": 39530,
+          "title": "Vantaa",
+          "type": "location"
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "id": 53258,
+      "title": "Työpaikka",
+      "type": "type"
+    },
+    {
+      "id": 53260,
+      "title": "Keikkatyö",
+      "type": "type"
+    },
+    {
+      "id": 53246,
+      "title": "Kesätyö",
+      "type": "type"
+    },
+    {
+      "id": 53256,
+      "title": "Harjoittelu",
+      "type": "type"
+    },
+    {
+      "id": 53254,
+      "title": "Oppisopimus",
+      "type": "type"
+    },
+    {
+      "id": 53282,
+      "title": "Työkokeilu",
+      "type": "type"
+    },
+    {
+      "id": 394900,
+      "title": "Anonyymi",
+      "type": "type"
+    },
+    {
+      "id": 624571,
+      "title": "Työsuhde",
+      "type": "type"
+    },
+    {
+      "id": 624572,
+      "title": "Virkasuhde",
+      "type": "type"
+    },
+    {
+      "id": 931710,
+      "title": "Avoin haku",
+      "type": "type"
+    }
+  ],
+  "employments": [
+    {
+      "id": 53268,
+      "title": "Vakinainen",
+      "type": "employment"
+    },
+    {
+      "id": 53266,
+      "title": "Määräaikainen",
+      "type": "employment"
+    }
+  ],
+  "hours": [
+    {
+      "id": 53208,
+      "title": "Kokoaikatyö",
+      "type": "hour"
+    },
+    {
+      "id": 53236,
+      "title": "Osa-aikatyö",
+      "type": "hour"
+    },
+    {
+      "id": 53242,
+      "title": "3-vuorotyö",
+      "type": "hour"
+    },
+    {
+      "id": 53244,
+      "title": "Tuntityö",
+      "type": "hour"
+    },
+    {
+      "id": 1294677,
+      "title": "2-vuorotyö",
+      "type": "hour"
+    }
+  ],
+  "organisationTypes": [
+    {
+      "id": 992177,
+      "title": "Hyvinvointialue",
+      "type": "organisation_type"
+    },
+    {
+      "id": 992178,
+      "title": "Kunta",
+      "type": "organisation_type"
+    },
+    {
+      "id": 992180,
+      "title": "Yhtiö",
+      "type": "organisation_type"
+    },
+    {
+      "id": 992179,
+      "title": "Oppilaitos",
+      "type": "organisation_type"
+    }
+  ],
+  "remotes": [
+    {
+      "id": 1637574,
+      "title": "Täysi etätyömahdollisuus",
+      "type": "remote"
+    },
+    {
+      "id": 1637590,
+      "title": "Osittainen etätyömahdollisuus",
+      "type": "remote"
+    },
+    {
+      "id": 1637591,
+      "title": "Ei etätyömahdollisuutta",
+      "type": "remote"
+    }
+  ]
+}

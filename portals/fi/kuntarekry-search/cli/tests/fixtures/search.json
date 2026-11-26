@@ -1,0 +1,68 @@
+{
+  "jobs": [
+    {
+      "id": 1932215,
+      "name": "korkeakouluharjoittelija-turun-filharmonisen-orkesterin-viestinnan-markkinoinnin-ja-tuotannon-tehtaviin-tku00-44-103-26",
+      "title": "Korkeakouluharjoittelija Turun filharmonisen orkesterin viestinnän, markkinoinnin ja tuotannon tehtäviin",
+      "url": "/fi/tyopaikat/korkeakouluharjoittelija-turun-filharmonisen-orkesterin-viestinnan-markkinoinnin-ja-tuotannon-tehtaviin-tku00-44-103-26/",
+      "profit_center": "Turun kaupunki",
+      "publication_date": "25.11.2026",
+      "publication_time": "08:15",
+      "publication_end": "8.12.2026",
+      "publication_end_time": "15:00",
+      "ext_id": "TKU00-44-103-26",
+      "published": "24h",
+      "organisation_title": "Turun kaupunki",
+      "region": "Varsinais-Suomi",
+      "employment_type": "Kokoaikatyö, Harjoittelu",
+      "anonymous": true,
+      "location_tags": [
+        "Turku"
+      ],
+      "profession": "Opetus- ja kulttuuriala"
+    },
+    {
+      "id": 1931275,
+      "name": "korkeakouluharjoittelija-varhaiskasvatuksen-hallintoon-vsa905-02-212-26",
+      "title": "Korkeakouluharjoittelija varhaiskasvatuksen hallintoon",
+      "url": "/fi/tyopaikat/korkeakouluharjoittelija-varhaiskasvatuksen-hallintoon-vsa905-02-212-26/",
+      "profit_center": "Vaasan kaupunki",
+      "publication_date": "23.11.2026",
+      "publication_time": "11:21",
+      "publication_end": "6.1.2027",
+      "publication_end_time": "23:59",
+      "ext_id": "VSA905-02-212-26",
+      "published": "",
+      "organisation_title": "Vaasan kaupunki",
+      "region": "Pohjanmaa",
+      "employment_type": "Harjoittelu",
+      "anonymous": false,
+      "location_tags": [
+        "Vaasa"
+      ],
+      "profession": "Opetus- ja kulttuuriala"
+    },
+    {
+      "id": 1929991,
+      "name": "korkeakouluharjoittelija-liikuntapalvelut-vsa905-02-203-26",
+      "title": "Korkeakouluharjoittelija, liikuntapalvelut",
+      "url": "/fi/tyopaikat/korkeakouluharjoittelija-liikuntapalvelut-vsa905-02-203-26/",
+      "profit_center": "Vaasan kaupunki",
+      "publication_date": "23.11.2026",
+      "publication_time": "00:00",
+      "publication_end": "7.12.2026",
+      "publication_end_time": "15:00",
+      "ext_id": "VSA905-02-203-26",
+      "published": "",
+      "organisation_title": "Vaasan kaupunki",
+      "region": "Pohjanmaa",
+      "employment_type": "Harjoittelu",
+      "anonymous": false,
+      "location_tags": [
+        "Vaasa"
+      ],
+      "profession": "Opetus- ja kulttuuriala"
+    }
+  ],
+  "total": 28
+}
