@@ -1,0 +1,65 @@
+[
+  {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "text": "Senior Product Manager, Platform",
+    "hostedUrl": "https://jobs.lever.co/acme/11111111-1111-4111-8111-111111111111",
+    "applyUrl": "https://jobs.lever.co/acme/11111111-1111-4111-8111-111111111111/apply",
+    "createdAt": 1792501200000,
+    "categories": {
+      "commitment": "Regular Full Time (Salary)",
+      "department": "Product",
+      "location": "Remote - United States",
+      "team": "Platform",
+      "allLocations": ["Remote - United States"]
+    },
+    "workplaceType": "remote",
+    "country": "US",
+    "description": "<div>Acme builds warehouse robots.</div><ul><li>Own the platform roadmap</li></ul>",
+    "descriptionPlain": "Acme builds warehouse robots.\n- Own the platform roadmap",
+    "lists": [],
+    "additional": "",
+    "additionalPlain": "",
+    "salaryRange": { "min": 150000, "max": 190000, "currency": "USD", "interval": "per-year-salary" }
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "text": "Staff Software Engineer",
+    "hostedUrl": "https://jobs.lever.co/acme/22222222-2222-4222-8222-222222222222",
+    "applyUrl": "https://jobs.lever.co/acme/22222222-2222-4222-8222-222222222222/apply",
+    "createdAt": 1793192400000,
+    "categories": {
+      "commitment": "Regular Full Time (Salary)",
+      "department": "Engineering",
+      "location": "Denver, Colorado",
+      "team": "Core",
+      "allLocations": ["Denver, Colorado"]
+    },
+    "workplaceType": "on-site",
+    "country": "US",
+    "description": "<div>Build the robot fleet.</div>",
+    "descriptionPlain": "Build the robot fleet.",
+    "lists": [],
+    "additional": "",
+    "additionalPlain": ""
+  },
+  {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "text": "Product Designer",
+    "hostedUrl": "https://jobs.lever.co/acme/33333333-3333-4333-8333-333333333333",
+    "applyUrl": "https://jobs.lever.co/acme/33333333-3333-4333-8333-333333333333/apply",
+    "createdAt": 1792933200000,
+    "categories": {
+      "commitment": "Regular Full Time (Salary)",
+      "department": "Design",
+      "location": "Austin, Texas",
+      "allLocations": ["Austin, Texas", "Remote - United States"]
+    },
+    "workplaceType": "hybrid",
+    "country": "US",
+    "description": "<div>Design the operator console.</div>",
+    "descriptionPlain": "Design the operator console.",
+    "lists": [],
+    "additional": "",
+    "additionalPlain": ""
+  }
+]
