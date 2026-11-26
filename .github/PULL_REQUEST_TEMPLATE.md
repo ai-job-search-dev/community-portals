@@ -14,8 +14,8 @@
 
 - [ ] **The contract.** `search` (`--format json|table|plain`) and `detail` (`--format json|plain`, `table` optional), JSON errors on stderr with exit 1, backoff on 429/5xx, zero runtime dependencies, tests. Any deviation is declared below.
 - [ ] **A safety pass.** No install or lifecycle scripts, no `trustedDependencies`, `bunfig.toml` or `.npmrc`, no requests beyond the declared board, nothing reading environment variables or files beyond what the skill needs.
-- [ ] **Honest scoping.** A personal-use note where the board's terms call for one. Anything metered or needing an API key ships `enabled: false`.
-- [ ] **robots.txt and terms respected.** Documented what the site allows and what the skill stays off. Boards that block automated access stay on the WebSearch fallback rather than getting a workaround.
+- [ ] **Honest scoping.** A personal-use note where the board's terms call for one. Anything metered or needing an API key ships `enabled: false`, and so does a board whose terms restrict automated access or downloading its content, with the clause quoted in `SKILL.md`.
+- [ ] **robots.txt and terms respected.** Documented what the site allows and what the skill stays off, quoting the current terms with their date. Paths `robots.txt` disallows are never requested. Boards whose terms restrict automated access ship `enabled: false`; boards that technically block it stay on the WebSearch fallback rather than getting a workaround.
 - [ ] **Search only.** Portals read postings. Nothing fills in or submits applications.
 
 ## Ownership
