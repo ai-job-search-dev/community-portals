@@ -10,7 +10,7 @@ description: >
   does <company> have open", search <company>'s SmartRecruiters careers page,
   look up this SmartRecruiters posting, fetch this job posting.
 context: fork
-enabled: true  # set to false to keep this portal installed but have /scrape skip it
+enabled: false  # keep disabled until SmartRecruiters API access is approved under its robots policy and terms
 allowed-tools: Bash(bun run .agents/skills/smartrecruiters-search/cli/src/cli.ts *)
 ---
 
