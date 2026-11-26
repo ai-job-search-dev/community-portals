@@ -1,0 +1,101 @@
+{
+  "total": 3,
+  "limit": 15,
+  "page": 1,
+  "pages": 1,
+  "suggestions": {
+    "jobPositionTypes": {
+      "5b8e46b3853f039706b6ea72": 10,
+      "5b8e46b3853f039706b6ea74": 2,
+      "5b8e46b3853f039706b6ea70": 213,
+      "5b8e46b3853f039706b6ea73": 22,
+      "5b8e46b3853f039706b6ea71": 11
+    },
+    "jobRoles": {
+      "mobiledevelopment": 10,
+      "businessdevelopment": 39,
+      "productmanagement": 24,
+      "sales": 51,
+      "uxuidesigner": 11,
+      "engineer": 69,
+      "analyst": 15,
+      "fullstackdeveloper": 33,
+      "marketing": 31,
+      "customerservice": 10,
+      "design": 15,
+      "projectmanagement": 11,
+      "legal": 9,
+      "backenddeveloper": 37,
+      "devops": 19,
+      "cxo": 7,
+      "operations": 24,
+      "customersuccess": 22,
+      "qualityassurance": 1,
+      "frontenddeveloper": 10,
+      "other": 5,
+      "datascience": 12,
+      "humanresources": 1,
+      "finance": 16
+    },
+    "remote": 35,
+    "paid": 226
+  },
+  "docs": [
+    {
+      "id": "6adbf5856c9d8e36c1fcf076",
+      "key": "landfolk-digital-product-designer-8594064",
+      "title": "Digital Product Designer",
+      "location": {
+        "country": "Denmark",
+        "locality": "Aarhus",
+        "address": "Aarhus, Denmark"
+      },
+      "isRemote": false,
+      "jobPositionTypes": [
+        "5b8e46b3853f039706b6ea70"
+      ],
+      "isFeatured": false,
+      "company": {
+        "name": "Landfolk"
+      }
+    },
+    {
+      "id": "6aad3e280d60d36e86d346aa",
+      "key": "no-title-35039",
+      "title": "Product Manager",
+      "location": {
+        "country": "Denmark",
+        "locality": "Aarhus",
+        "address": "Aarhus, Denmark",
+        "postalCode": "",
+        "route": ""
+      },
+      "isRemote": false,
+      "jobPositionTypes": [
+        "5b8e46b3853f039706b6ea70"
+      ],
+      "isFeatured": true,
+      "company": {
+        "name": "Candeno"
+      }
+    },
+    {
+      "id": "6a886279405f30c73297b5d9",
+      "key": "pandektes-senior-product-engineer-de20f12c-79ab-4d6e-9b35-e033a8322e60",
+      "title": "Product Engineer ",
+      "location": {
+        "country": "Denmark",
+        "locality": "Copenhagen",
+        "address": "Copenhagen, Denmark"
+      },
+      "isRemote": false,
+      "jobPositionTypes": [
+        "5b8e46b3853f039706b6ea70"
+      ],
+      "isFeatured": true,
+      "company": {
+        "name": "Pandektes"
+      }
+    }
+  ]
+}
