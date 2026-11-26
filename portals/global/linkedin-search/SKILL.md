@@ -11,7 +11,7 @@ description: >
   positions open, remote jobs, "are there any X jobs in <place>", look up this
   job posting.
 context: fork
-enabled: true  # set to false to keep this portal installed but have /scrape skip it
+enabled: false  # LinkedIn's terms forbid automated access - ships opt-in; read "Personal use only" below before setting true
 allowed-tools: Bash(bun run .agents/skills/linkedin-search/cli/src/cli.ts *)
 ---
 
@@ -29,7 +29,8 @@ forker in any market out of the box.
 ## ⚠️ Personal use only
 
 This uses LinkedIn's public job pages; automated access is against LinkedIn's Terms of
-Service, so **keep volume low and don't use it commercially or for bulk data collection.**
+Service ([User Agreement § 8.2](https://www.linkedin.com/legal/user-agreement)), so **keep
+volume low and don't use it commercially or for bulk data collection.**
 Run it on your own responsibility.
 
 ## When to use this skill
