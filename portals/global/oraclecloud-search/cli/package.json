@@ -1,0 +1,20 @@
+{
+  "name": "oraclecloud-cli",
+  "version": "1.0.0",
+  "description": "CLI for searching any employer's Oracle Recruiting Cloud careers site through Oracle's public recruitingCEJobRequisitions REST API - no authentication, zero runtime dependencies.",
+  "type": "module",
+  "main": "src/cli.ts",
+  "bin": {
+    "oraclecloud-search": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "test": "bun test --timeout 30000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "^5.4.0"
+  }
+}
