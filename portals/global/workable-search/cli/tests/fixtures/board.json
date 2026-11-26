@@ -1,0 +1,101 @@
+{
+  "name": "Acme Robotics",
+  "description": "<p>Acme builds warehouse robots.</p>",
+  "jobs": [
+    {
+      "title": "Senior Product Manager",
+      "shortcode": "PM00000001",
+      "code": "R-1",
+      "employment_type": "Full-time",
+      "telecommuting": false,
+      "workplace_type": "hybrid",
+      "department": "Product",
+      "url": "https://apply.workable.com/j/PM00000001",
+      "shortlink": "https://apply.workable.com/j/PM00000001",
+      "published_on": "2026-11-10",
+      "created_at": "2026-11-09",
+      "country": "United Kingdom",
+      "city": "London",
+      "state": "England",
+      "locations": [
+        { "city": "London", "country": "United Kingdom", "countryCode": "GB", "region": "England", "hidden": false }
+      ]
+    },
+    {
+      "title": "Senior Product Manager",
+      "shortcode": "PM00000001",
+      "code": "R-1",
+      "employment_type": "Full-time",
+      "telecommuting": false,
+      "workplace_type": "hybrid",
+      "department": "Product",
+      "url": "https://apply.workable.com/j/PM00000001",
+      "shortlink": "https://apply.workable.com/j/PM00000001",
+      "published_on": "2026-11-10",
+      "created_at": "2026-11-09",
+      "country": "Romania",
+      "city": "",
+      "state": "",
+      "locations": [
+        { "city": "", "country": "Romania", "countryCode": "RO", "region": null, "hidden": false }
+      ]
+    },
+    {
+      "title": "Staff Software Engineer",
+      "shortcode": "EN00000002",
+      "code": "R-2",
+      "employment_type": "Full-time",
+      "telecommuting": true,
+      "workplace_type": "remote",
+      "department": "Engineering",
+      "url": "https://apply.workable.com/j/EN00000002",
+      "shortlink": "https://apply.workable.com/j/EN00000002",
+      "published_on": "2026-11-18",
+      "created_at": "2026-11-17",
+      "country": "United States",
+      "city": "",
+      "state": "",
+      "locations": [
+        { "city": "", "country": "United States", "countryCode": "US", "region": null, "hidden": false }
+      ]
+    },
+    {
+      "title": "Product Designer",
+      "shortcode": "DS00000003",
+      "code": "R-3",
+      "employment_type": "Contract",
+      "telecommuting": false,
+      "workplace_type": "on_site",
+      "department": "Design",
+      "url": "https://apply.workable.com/j/DS00000003",
+      "shortlink": "https://apply.workable.com/j/DS00000003",
+      "published_on": "2026-10-01",
+      "created_at": "2026-10-01",
+      "country": "Germany",
+      "city": "Berlin",
+      "state": "",
+      "locations": [
+        { "city": "Berlin", "country": "Germany", "countryCode": "DE", "region": null, "hidden": false }
+      ]
+    },
+    {
+      "title": "Prod\u200buct Analyst",
+      "shortcode": "AN00000004",
+      "code": "R-4",
+      "employment_type": "Full-time",
+      "telecommuting": false,
+      "workplace_type": "hybrid",
+      "department": "Product",
+      "url": "https://apply.workable.com/j/AN00000004",
+      "shortlink": "https://apply.workable.com/j/AN00000004",
+      "published_on": "2026-11-15",
+      "created_at": "2026-11-14",
+      "country": "Canada",
+      "city": "Toronto",
+      "state": "Ontario",
+      "locations": [
+        { "city": "Toronto", "country": "Canada", "countryCode": "CA", "region": "Ontario", "hidden": false }
+      ]
+    }
+  ]
+}
