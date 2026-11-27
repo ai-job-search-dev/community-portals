@@ -1,0 +1,20 @@
+{
+  "name": "google-jobs-search-cli",
+  "version": "1.0.0",
+  "description": "CLI for searching Google Jobs through the Apify Actor krammer/google-jobs-scraper — needs an Apify token in APIFY_API_TOKEN, zero runtime dependencies. Metered; personal use only (Google's terms restrict automated access).",
+  "type": "module",
+  "main": "src/cli.ts",
+  "bin": {
+    "google-jobs-search": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "test": "bun test --timeout 30000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/bun": "1.4.4"
+  }
+}
