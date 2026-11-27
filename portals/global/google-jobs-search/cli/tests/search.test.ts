@@ -28,7 +28,7 @@ interface SearchOutput {
     url: string | null
     description: string | null
     salary: string | null
-    apply_options: Array<{ title: string | null; link: string | null }>
+    apply_options: Array<{ title: string | null; link: string }>
   }>
 }
 
@@ -241,6 +241,86 @@ function runWithStatusHere(status: string, statusMessage = ""): string {
     data: { id: FIXTURE_RUN_ID, status, statusMessage, defaultDatasetId: FIXTURE_DATASET_ID },
   })
 }
+
+describe("plain format", () => {
+  test("an empty page prints an explicit No results. line", async () => {
+    const server = startFakeApify(async (request) => {
+      if (request.path.includes("/datasets/")) return { status: 200, body: "[]" }
+      return successHandler(request)
+    })
+    FAKES.push(server)
+    const result = await runCLI(["search", "-q", "x", "--format", "plain"], env(server.origin))
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toBe("No results.")
+  })
+
+  test("CRLF and a lone CR in listing text are normalized to LF", async () => {
+    const server = startFakeApify(async (request) => {
+      if (request.path.includes("/datasets/")) {
+        return { status: 200, body: JSON.stringify([{ title: "A\r\nB", company: "C\rD" }]) }
+      }
+      return successHandler(request)
+    })
+    FAKES.push(server)
+    const result = await runCLI(["search", "-q", "x", "--format", "plain"], env(server.origin))
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).not.toContain("\r")
+    expect(result.stdout).toContain("  CD · — · —")
+  })
+
+  test("a javascript: apply link is dropped and url stays null", async () => {
+    const server = startFakeApify(async (request) => {
+      if (request.path.includes("/datasets/")) {
+        return {
+          status: 200,
+          body: JSON.stringify([
+            {
+              title: "X",
+              apply_options: [
+                { title: "evil", link: "javascript:alert(1)" },
+                { title: "good", link: "https://example.com/apply" },
+              ],
+            },
+          ]),
+        }
+      }
+      return successHandler(request)
+    })
+    FAKES.push(server)
+    const result = await runCLI(["search", "-q", "x"], env(server.origin))
+    expect(result.exitCode).toBe(0)
+    const output = parseJSON<SearchOutput>(result)
+    expect(output.results[0].apply_options).toEqual([{ title: "good", link: "https://example.com/apply" }])
+    expect(output.results[0].url).toBe("https://example.com/apply")
+  })
+
+  test("only a non-http apply link leaves apply_options empty and url null", async () => {
+    const server = startFakeApify(async (request) => {
+      if (request.path.includes("/datasets/")) {
+        return { status: 200, body: JSON.stringify([{ title: "X", apply_options: [{ link: "javascript:1" }, { link: "data:text/html,x" }] }]) }
+      }
+      return successHandler(request)
+    })
+    FAKES.push(server)
+    const result = await runCLI(["search", "-q", "x"], env(server.origin))
+    const output = parseJSON<SearchOutput>(result)
+    expect(output.results[0].apply_options).toEqual([])
+    expect(output.results[0].url).toBeNull()
+  })
+})
+
+describe("malformed envelopes", () => {
+  test("a JSON null run response exits 1 with HTTP_ERROR, not a crash", async () => {
+    const server = startFakeApify(async (request) => {
+      if (request.path.includes("/runs")) return { status: 200, body: "null" }
+      return successHandler(request)
+    })
+    FAKES.push(server)
+    const result = await runCLI(["search", "-q", "x"], env(server.origin))
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stderr).code).toBe("HTTP_ERROR")
+  })
+})
 
 describe("HTTP error mapping", () => {
   test("401 exits 1 with AUTH", async () => {

@@ -10,14 +10,28 @@ Base URL: `https://api.apify.com/v2`, overridable with `GOOGLE_JOBS_SEARCH_API_U
 ## Authentication
 
 Every request carries `Authorization: Bearer <APIFY_API_TOKEN>`. The token is
-never put in a URL, a log line or an error message.
+never put in a URL, a log line or an error message. When `APIFY_API_TOKEN` is
+unset or blank, the CLI exits with `MISSING_TOKEN` before it sends any request;
+`AUTH` is not used for a missing token.
 
 | Response | CLI code | Meaning |
 |----------|----------|---------|
-| `401`, `403` | `AUTH` | The token is missing, revoked or lacks access. |
+| `401`, `403` | `AUTH` | The API rejected the token: it is invalid, revoked or lacks access. |
 | `402` | `QUOTA` | The Apify account has no remaining quota. |
-| `429`, `5xx` | `HTTP_ERROR` after retries | Rate limit or upstream failure; retried with exponential backoff (500ms doubling to 8s, six retries). |
-| other non-2xx | `HTTP_ERROR` | Surfaced with a truncated response body. |
+| `other non-2xx` | `HTTP_ERROR` | Surfaced with a truncated response body (the first 500 characters). |
+
+### Retry and failure policy by method
+
+- **GET** (run polls, dataset reads): retried on `429` and on `5xx`, and on a
+  network failure or request timeout. The schedule is the portal contract's:
+  500 ms doubling to 8 s, six retries, each wait plus 0–499 ms of jitter. A
+  failure that survives all retries is `HTTP_ERROR`.
+- **POST** (Actor run start): retried on `429` only, because the request was
+  refused and nothing started. A `5xx`, a network failure or a timeout is
+  **not** retried and is `HTTP_ERROR` at once: the run may already have started,
+  and every run is billed.
+- Any fetch that rejects (network error, `AbortSignal` timeout) is wrapped in
+  `HTTP_ERROR`, and the message names the original error name.
 
 ## `POST /acts/krammer~google-jobs-scraper/runs?waitForFinish=60`
 
@@ -54,6 +68,8 @@ Actor stored them, without Apify's own metadata fields.
 - `search` reads page N with `offset = (page - 1) × limit` and `limit = limit`.
 - `detail` reads one record with `offset = <the id's offset>` and `limit = 1`.
 - An empty array is `NOT_FOUND` for `detail`, and an empty result set for `search`.
+- A `404` from the API (an expired or missing dataset) is `NOT_FOUND` for
+  `detail`, the same outcome as an empty page.
 
 ### Record fields the CLI reads
 
@@ -93,13 +109,15 @@ Mapping to a result:
 | `id` | `<datasetId>:<record offset in the dataset>` |
 | `title`, `company`, `location`, `description` | the same-named field, or `null` |
 | `date` | `postedDate` as `YYYY-MM-DD`, or `null` |
-| `url` | `apply_options[0].link`, or `null` |
+| `url` | the first `http(s)` `apply_options[].link`, or `null` |
 | `salary`, `salaryMin`, `salaryMax`, `salaryCurrency`, `salaryPeriod` | the same-named field, or `null` |
 | `workMode` | `workMode`, or `null` |
 | `jobTypes` | `jobTypes`, or `[]` |
-| `apply_options` | `[{title, link}]`, or `[]` |
+| `apply_options` | `[{title, link}]` for each option with an `http(s)` link, or `[]` |
 
-Every string passes through the CLI's `stripInvisible` before output.
+Every string passes through the CLI's `stripInvisible` before output. An apply
+option whose `link` is not `http:`/`https:` (or does not parse as a URL) is
+dropped, so `apply_options` and `url` never carry another scheme.
 
 ## Notes
 

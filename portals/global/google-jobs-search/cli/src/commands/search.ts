@@ -2,6 +2,7 @@ import {
   apiToken,
   fetchDatasetItems,
   jobageToDatePosted,
+  normalizeLineBreaks,
   runActor,
   stripInvisible,
   toResult,
@@ -80,14 +81,22 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     if (opts.format === "table") {
       process.stdout.write(renderTable(results) + "\n")
     } else if (opts.format === "plain") {
-      process.stdout.write(
-        results
-          .map(
-            (r) =>
-              `${r.title || "—"}\n  ${r.company || "—"} · ${r.location || "—"} · ${shortDate(r.date)}\n  id: ${r.id}\n  ${r.url || "—"}`,
-          )
-          .join("\n\n") + "\n",
-      )
+      // An empty page is an explicit message, not a blank line: a successful
+      // no-hit search must not look like no output at all.
+      if (results.length === 0) {
+        process.stdout.write("No results.\n")
+      } else {
+        process.stdout.write(
+          normalizeLineBreaks(
+            results
+              .map(
+                (r) =>
+                  `${r.title || "—"}\n  ${r.company || "—"} · ${r.location || "—"} · ${shortDate(r.date)}\n  id: ${r.id}\n  ${r.url || "—"}`,
+              )
+              .join("\n\n"),
+          ) + "\n",
+        )
+      }
     } else {
       process.stdout.write(
         JSON.stringify(

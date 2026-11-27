@@ -6,7 +6,7 @@ across the US, UK, India and Germany.
 
 **Data source**: `api.apify.com`. This CLI never requests google.com.
 **Authentication**: an Apify API token in `APIFY_API_TOKEN`.
-**Dependencies**: none (plain `bun` + `fetch`). `bun install` is optional and only pulls dev type defs.
+**Dependencies**: none at runtime (plain `bun` + `fetch`). `bun install` is optional; it pulls the optional development tooling only: the TypeScript compiler (`tsc`, for `bun run typecheck`) and Bun's type definitions.
 
 > **Metered and personal use only.** Every `search` starts a paid Actor run on
 > your Apify account. Google's terms restrict automated access to its services;
@@ -16,7 +16,7 @@ across the US, UK, India and Germany.
 
 ```bash
 cd .agents/skills/google-jobs-search/cli
-bun install   # optional — only installs TypeScript dev types
+bun install   # optional — installs the optional dev tooling (tsc + Bun types)
 export APIFY_API_TOKEN=...   # from Apify Console -> Settings -> API & Integrations
 ```
 

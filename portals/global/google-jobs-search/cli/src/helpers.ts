@@ -30,12 +30,18 @@ export function writeError(error: string, code: string): void {
   process.stderr.write(JSON.stringify({ error, code }) + "\n")
 }
 
-/** An error with the portal contract's machine-readable code attached. */
+/**
+ * An error with the portal contract's machine-readable code attached. `status`
+ * is the HTTP status when the error came from a response, so a caller can map a
+ * specific status (for example a dataset 404) to its own contract code.
+ */
 export class ApiError extends Error {
   code: string
-  constructor(message: string, code: string) {
+  status?: number
+  constructor(message: string, code: string, status?: number) {
     super(message)
     this.code = code
+    this.status = status
   }
 }
 
@@ -46,48 +52,110 @@ const UA = "Mozilla/5.0 (compatible; google-jobs-search-cli/1.0)"
 // still fails instead of hanging the CLI forever.
 const REQUEST_TIMEOUT_MS = 120_000
 
-// Responses are JSON and small, except an error body from a proxy. Read at most
-// this much text, so a huge or hostile body cannot fill memory.
-const MAX_BODY_CHARS = 200_000
+// A successful response is read whole, because a dataset page must parse. The
+// cap bounds memory instead of truncating: a page past it is an error, not a
+// trimmed body that would fail to parse.
+const MAX_BODY_CHARS = 20_000_000
 const MAX_ERROR_BODY_CHARS = 500
 
 /**
+ * Read a response body as text without buffering it whole first. `limit` caps
+ * the characters kept, counted after decoding, so a huge or hostile body cannot
+ * fill memory. A successful read that hits the cap throws; an error read stops
+ * at the cap and cancels the stream, because only a prefix is reported.
+ */
+async function readBodyBounded(response: Response, limit: number, truncate: boolean): Promise<string> {
+  const reader = response.body?.getReader()
+  if (!reader) return ""
+  const decoder = new TextDecoder()
+  let text = ""
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      text += decoder.decode(value, { stream: true })
+      // `>` not `>=`: a body exactly at the cap is legitimate and is read to
+      // the end; only a body that grows past it is rejected. Memory stays
+      // bounded to the cap plus one chunk.
+      if (text.length > limit) {
+        if (truncate) {
+          await reader.cancel()
+          return text.slice(0, limit)
+        }
+        await reader.cancel()
+        throw new ApiError(`Apify API response exceeded ${limit} characters and was not read`, "HTTP_ERROR")
+      }
+    }
+    text += decoder.decode()
+    return text
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+/**
  * A request to the Apify API. Retries 429/5xx with exponential backoff (the
- * portal contract's schedule: 500ms doubling to 8s, six retries). 401/403 and
- * 402 are classified here because every endpoint answers them the same way.
- * Any other non-2xx is surfaced with a truncated body.
+ * portal contract's schedule: 500ms doubling to 8s, six retries); a GET retries
+ * on both, a POST only on 429, because a POST that failed with 5xx may already
+ * have started a billed run. 401/403 and 402 are classified here because every
+ * endpoint answers them the same way. Any other non-2xx is surfaced with a
+ * truncated body.
  */
 export async function apiRequest(
   path: string,
   init: { method?: string; body?: string; token: string },
 ): Promise<string> {
   const url = `${baseUrl()}${path}`
+  const method = init.method ?? "GET"
   const maxRetries = 6
   let delay = 500
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetch(url, {
-      method: init.method ?? "GET",
-      headers: {
-        Authorization: `Bearer ${init.token}`,
-        "User-Agent": UA,
-        Accept: "application/json",
-        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      body: init.body,
-      redirect: "follow",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    })
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${init.token}`,
+          "User-Agent": UA,
+          Accept: "application/json",
+          ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
+        },
+        body: init.body,
+        redirect: "follow",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
+    } catch (e) {
+      // A network failure or the request timeout is an HTTP-level failure, not
+      // a command-specific one. A GET may be retried; a POST must not be, for
+      // the same reason as a 5xx: the run may already be started and billed.
+      if (method !== "GET") {
+        const name = e instanceof Error ? e.name : "Error"
+        throw new ApiError(`Apify API request failed (${name}): ${e instanceof Error ? e.message : String(e)}`, "HTTP_ERROR")
+      }
+      if (attempt === maxRetries) {
+        const name = e instanceof Error ? e.name : "Error"
+        throw new ApiError(
+          `Apify API request failed after ${maxRetries + 1} attempts (${name}): ${e instanceof Error ? e.message : String(e)}`,
+          "HTTP_ERROR",
+        )
+      }
+      const jitter = Math.floor(Math.random() * 500)
+      await new Promise((r) => setTimeout(r, delay + jitter))
+      delay = Math.min(delay * 2, 8000)
+      continue
+    }
 
     // A POST that failed with 5xx may still have started a run, and every run
     // is billed, so only a 429 (the request was refused, nothing started) is
     // retried for POST. GET is safe to repeat on both.
-    const retryable = response.status === 429 || (response.status >= 500 && (init.method ?? "GET") === "GET")
+    const retryable = response.status === 429 || (response.status >= 500 && method === "GET")
     if (retryable) {
       if (attempt === maxRetries) {
         throw new ApiError(
           `Apify API request failed after ${maxRetries + 1} attempts: ${response.status} ${response.statusText}`,
           "HTTP_ERROR",
+          response.status,
         )
       }
       const jitter = Math.floor(Math.random() * 500)
@@ -100,20 +168,22 @@ export async function apiRequest(
       throw new ApiError(
         "Apify rejected the APIFY_API_TOKEN (HTTP 401/403). Check the token in Apify Console -> Settings -> API & Integrations.",
         "AUTH",
+        response.status,
       )
     }
     if (response.status === 402) {
-      throw new ApiError("The Apify account has no remaining quota (HTTP 402).", "QUOTA")
+      throw new ApiError("The Apify account has no remaining quota (HTTP 402).", "QUOTA", response.status)
     }
 
-    const body = (await response.text()).slice(0, MAX_BODY_CHARS)
     if (!response.ok) {
+      const body = await readBodyBounded(response, MAX_ERROR_BODY_CHARS, true)
       throw new ApiError(
-        `Apify API request failed: ${response.status} ${response.statusText}: ${body.slice(0, MAX_ERROR_BODY_CHARS)}`,
+        `Apify API request failed: ${response.status} ${response.statusText}: ${body}`,
         "HTTP_ERROR",
+        response.status,
       )
     }
-    return body
+    return await readBodyBounded(response, MAX_BODY_CHARS, false)
   }
   throw new ApiError("Apify API request failed after max retries", "HTTP_ERROR")
 }
@@ -147,7 +217,11 @@ interface RunEnvelope {
 }
 
 function readRun(body: string): RunInfo {
-  const data = (parseBody(body) as RunEnvelope).data
+  const parsed = parseBody(body)
+  // A JSON `null`, or any non-object, has no `.data`; classify it here instead
+  // of letting a property access throw a raw TypeError.
+  const envelope = (parsed !== null && typeof parsed === "object" ? parsed : {}) as RunEnvelope
+  const data = envelope.data
   if (!data || typeof data.id !== "string" || typeof data.status !== "string") {
     throw new ApiError("Apify API returned a run without an id or status", "HTTP_ERROR")
   }
@@ -215,6 +289,16 @@ export async function fetchDatasetItems(
 }
 
 /**
+ * Normalize a listing's line breaks for plain output: CRLF becomes LF, and a
+ * lone CR (a carriage return that would move the cursor to column zero) is
+ * dropped. Third-party text must not be able to overwrite earlier terminal
+ * output.
+ */
+export function normalizeLineBreaks(text: string): string {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "")
+}
+
+/**
  * Characters a reader of the posting never sees but a model reading this
  * output does: C0/C1 controls other than tab, newline and carriage return, the
  * soft hyphen, bidi marks/embeddings/overrides/isolates, zero-width characters
@@ -222,9 +306,14 @@ export async function fetchDatasetItems(
  * characters (U+E0000-E007F), which can spell out a whole hidden instruction.
  * Listing text is third-party data, and these arrive raw in a portal's JSON or
  * markup as easily as through a numeric entity.
+ *
+ * `\p{Default_Ignorable_Code_Point}` covers every code point Unicode marks
+ * default-ignorable — a category that includes U+034F COMBINING GRAPHEME
+ * JOINER and other invisible characters a hand-written set misses — without
+ * touching ordinary whitespace, which is not default-ignorable.
  */
 const INVISIBLE_CHARS =
-  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F­؜᠎​-‏‪-‮⁠-⁯︀-️﻿\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFE00-\uFE0F\uFEFF\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}\p{Default_Ignorable_Code_Point}]/gu
 
 /** Strip INVISIBLE_CHARS from every string in a result, recursively: the CLI's output boundary. */
 export function stripInvisible<T>(value: T): T {
@@ -256,7 +345,7 @@ export interface JobResult {
   salaryPeriod: string | null
   workMode: string | null
   jobTypes: string[]
-  apply_options: Array<{ title: string | null; link: string | null }>
+  apply_options: Array<{ title: string | null; link: string }>
 }
 
 function str(value: unknown): string | null {
@@ -279,6 +368,21 @@ export function contractDate(value: unknown): string | null {
 }
 
 /**
+ * An http(s) URL, or null. Actor-supplied links are third-party data: a
+ * `javascript:`, `data:` or otherwise malformed value must never reach output.
+ * Anything that does not parse or is not `http:`/`https:` is null.
+ */
+function httpUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0) return null
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? value : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Reshape one dataset record into the contract result. `id` is
  * `<datasetId>:<the record's offset in the dataset>`, which is what `detail`
  * reads back without a second Actor run.
@@ -286,12 +390,16 @@ export function contractDate(value: unknown): string | null {
 export function toResult(item: unknown, datasetId: string, offset: number): JobResult {
   const record = (item !== null && typeof item === "object" ? item : {}) as Record<string, unknown>
 
-  const applyOptions = Array.isArray(record.apply_options)
-    ? record.apply_options.map((option) => {
-        const entry = (option !== null && typeof option === "object" ? option : {}) as Record<string, unknown>
-        return { title: str(entry.title), link: str(entry.link) }
-      })
-    : []
+  // An apply option without an http(s) link is dropped, not emitted with a null
+  // link: an unusable apply target is not worth handing downstream.
+  const applyOptions: Array<{ title: string | null; link: string }> = []
+  if (Array.isArray(record.apply_options)) {
+    for (const option of record.apply_options) {
+      const entry = (option !== null && typeof option === "object" ? option : {}) as Record<string, unknown>
+      const link = httpUrl(entry.link)
+      if (link !== null) applyOptions.push({ title: str(entry.title), link })
+    }
+  }
 
   const jobTypes = Array.isArray(record.jobTypes)
     ? record.jobTypes.filter((t): t is string => typeof t === "string")

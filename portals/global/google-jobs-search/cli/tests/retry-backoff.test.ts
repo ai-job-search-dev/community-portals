@@ -19,6 +19,20 @@ function instantTimers() {
   globalThis.setTimeout = ((fn: () => void) => originalSetTimeout(fn, 0)) as unknown as typeof setTimeout
 }
 
+/**
+ * Replace setTimeout so the timer fires at once, while recording the delay each
+ * call asked for. The recorded delays are what the backoff assertions read: a
+ * zero or constant wait would otherwise pass unseen.
+ */
+function recordingTimers(): { delays: number[] } {
+  const state = { delays: [] as number[] }
+  globalThis.setTimeout = ((fn: () => void, ms?: number, ...args: unknown[]) => {
+    state.delays.push(Number(ms))
+    return originalSetTimeout(fn, 0, ...args)
+  }) as unknown as typeof setTimeout
+  return state
+}
+
 function stubFetch(responses: Array<() => Response>): { calls: number } {
   const state = { calls: 0 }
   globalThis.fetch = (async () => {
@@ -55,6 +69,66 @@ describe("apiRequest retry/backoff", () => {
     const state = stubFetch([() => new Response("", { status: 500 })])
     expect(await codeOf(apiRequest("/x", { token: "t" }))).toBe("HTTP_ERROR")
     expect(state.calls).toBe(7)
+  })
+
+  test("waits the exponential schedule (500ms doubling to 8s) plus 0-499ms jitter", async () => {
+    const timers = recordingTimers()
+    stubFetch([() => new Response("", { status: 500 })])
+    expect(await codeOf(apiRequest("/x", { token: "t" }))).toBe("HTTP_ERROR")
+    expect(timers.delays).toHaveLength(6)
+    const windows: Array<[number, number]> = [
+      [500, 1000],
+      [1000, 1500],
+      [2000, 2500],
+      [4000, 4500],
+      [8000, 8500],
+      [8000, 8500],
+    ]
+    timers.delays.forEach((delay, i) => {
+      const [lo, hi] = windows[i]
+      expect(delay).toBeGreaterThanOrEqual(lo)
+      expect(delay).toBeLessThan(hi)
+    })
+  })
+
+  test("wraps a GET network failure in HTTP_ERROR and retries it", async () => {
+    const timers = recordingTimers()
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      if (calls <= 2) throw new TypeError("fetch failed")
+      return new Response("{}", { status: 200 })
+    }) as unknown as typeof fetch
+    expect(await apiRequest("/x", { token: "t" })).toBe("{}")
+    expect(calls).toBe(3)
+    expect(timers.delays).toHaveLength(2)
+  })
+
+  test("wraps a GET timeout in HTTP_ERROR, naming the error", async () => {
+    instantTimers()
+    globalThis.fetch = (async () => {
+      throw new DOMException("The operation timed out.", "TimeoutError")
+    }) as unknown as typeof fetch
+    let message = ""
+    try {
+      await apiRequest("/x", { token: "t" })
+    } catch (e) {
+      expect(e instanceof ApiError).toBe(true)
+      expect((e as ApiError).code).toBe("HTTP_ERROR")
+      message = (e as ApiError).message
+    }
+    expect(message).toContain("TimeoutError")
+  })
+
+  test("does not retry a POST on a network failure: the run may have started", async () => {
+    instantTimers()
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      throw new TypeError("fetch failed")
+    }) as unknown as typeof fetch
+    expect(await codeOf(apiRequest("/acts/x/runs", { method: "POST", body: "{}", token: "t" }))).toBe("HTTP_ERROR")
+    expect(calls).toBe(1)
   })
 
   test("does not retry a POST on 5xx: the run may have started and runs are billed", async () => {

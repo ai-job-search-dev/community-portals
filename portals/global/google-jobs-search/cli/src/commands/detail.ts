@@ -1,6 +1,8 @@
 import {
+  ApiError,
   apiToken,
   fetchDatasetItems,
+  normalizeLineBreaks,
   parseDetailId,
   stripInvisible,
   toResult,
@@ -23,7 +25,7 @@ function renderPlain(job: JobResult): string {
   lines.push(`Work mode: ${job.workMode || "—"}`)
   lines.push(`Job types: ${job.jobTypes.length ? job.jobTypes.join(", ") : "—"}`)
   lines.push("")
-  lines.push(job.description || "(no description)")
+  lines.push(job.description ? normalizeLineBreaks(job.description) : "(no description)")
   if (job.apply_options.length) {
     lines.push("")
     lines.push("Apply:")
@@ -33,7 +35,7 @@ function renderPlain(job: JobResult): string {
   }
   lines.push("")
   lines.push(`id: ${job.id}`)
-  return lines.join("\n")
+  return normalizeLineBreaks(lines.join("\n"))
 }
 
 export async function runDetail(opts: DetailOpts): Promise<number> {
@@ -69,6 +71,16 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     }
     return 0
   } catch (e) {
+    // Apify answers a missing or expired dataset with 404. That is the same
+    // outcome as an empty page: the id no longer resolves, so it becomes
+    // NOT_FOUND rather than a generic HTTP_ERROR.
+    if (e instanceof ApiError && e.status === 404) {
+      writeError(
+        `Dataset ${parsed.datasetId} was not found (HTTP 404). The dataset may have expired (Apify keeps datasets for a limited time) or the id may be stale.`,
+        "NOT_FOUND",
+      )
+      return 1
+    }
     const code = e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "DETAIL_FAILED"
     writeError(e instanceof Error ? e.message : String(e), code)
     return 1

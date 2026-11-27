@@ -102,6 +102,24 @@ async function main(): Promise<number> {
     }
   }
 
+  // A positional argument the command does not use is rejected, not ignored:
+  // `search -q engineer typo` would otherwise start a metered search with no
+  // sign that "typo" was dropped. `search` takes none past its name; `detail`
+  // takes exactly one, the id.
+  if (cmd === "search" || cmd === "detail") {
+    const allowed = cmd === "detail" ? 2 : 1
+    if ((flags._ as string[]).length > allowed) {
+      const extra = (flags._ as string[]).slice(allowed)
+      process.stderr.write(
+        JSON.stringify({
+          error: `unexpected positional argument${extra.length > 1 ? "s" : ""} ${extra.map((a) => `"${a}"`).join(", ")} for '${cmd}' - only flags are read after the command${cmd === "detail" ? " and its <id>" : ""}; see --help`,
+          code: "BAD_ARG",
+        }) + "\n",
+      )
+      return 1
+    }
+  }
+
   // Numbers are validated as whole numbers >= 1, never truncated: a fractional
   // or zero value would otherwise change a filter silently.
   const parseIntFlag = (name: string, raw: string | boolean | string[]): number | null => {

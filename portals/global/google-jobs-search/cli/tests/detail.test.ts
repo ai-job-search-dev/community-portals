@@ -82,6 +82,34 @@ describe("detail not found", () => {
     expect(result.exitCode).toBe(1)
     expect(JSON.parse(result.stderr).code).toBe("NOT_FOUND")
   })
+
+  test("a dataset 404 from Apify exits 1 with NOT_FOUND, not HTTP_ERROR", async () => {
+    const server = startFakeApify(async (request) => {
+      if (request.path.includes("/datasets/")) return { status: 404, body: '{"error":{"type":"record-not-found"}}' }
+      return successHandler(request)
+    })
+    FAKES.push(server)
+    const result = await runCLI(["detail", "expiredDataset123:0"], env(server.origin))
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toBe("")
+    expect(JSON.parse(result.stderr).code).toBe("NOT_FOUND")
+  })
+})
+
+describe("detail plain line breaks", () => {
+  test("CRLF becomes LF and a lone CR is removed in the rendered body", async () => {
+    const server = startFakeApify(async (request) => {
+      if (request.path.includes("/datasets/")) {
+        return { status: 200, body: JSON.stringify([{ title: "T", description: "line1\r\nline2\rline3" }]) }
+      }
+      return successHandler(request)
+    })
+    FAKES.push(server)
+    const result = await runCLI(["detail", "someDataset:0", "--format", "plain"], env(server.origin))
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).not.toContain("\r")
+    expect(result.stdout).toContain("line1\nline2line3")
+  })
 })
 
 describe("detail missing token", () => {

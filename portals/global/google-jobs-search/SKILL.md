@@ -107,8 +107,9 @@ bun run .agents/skills/google-jobs-search/cli/src/cli.ts detail <dataset_id>:<of
 The `id` from a `search` result, in the form `<dataset_id>:<offset>` (for
 example `jPV8SE3dHqcuO2M3C:0`). `detail` reads the record straight from that
 already-finished run's dataset: it starts no run and incurs no Actor fee. Apify
-keeps datasets for a limited time; once the dataset expires, the same id answers
-`NOT_FOUND`.
+keeps datasets for a limited time. Once the dataset expires, `detail` exits `1`
+with `NOT_FOUND`: an expired or missing dataset both answer `404` from the API,
+and an empty record page maps to the same code.
 
 ## Usage examples
 
@@ -142,13 +143,34 @@ bun run .agents/skills/google-jobs-search/cli/src/cli.ts detail jPV8SE3dHqcuO2M3
 
 Every result carries `id`, `title`, `company`, `location`, `date`, `url`,
 `description`, plus `salary`, `salaryMin`, `salaryMax`, `salaryCurrency`,
-`salaryPeriod`, `workMode`, `jobTypes` and `apply_options`. A value Google did not
-return is `null`, never omitted.
+`salaryPeriod`, `workMode`, `jobTypes` and `apply_options`. Every field is always
+present. A scalar field Google did not return is `null`, never omitted. The two
+array fields are always present and empty (`[]`) when they hold nothing:
+`jobTypes` and `apply_options`. `url` is `null` when no `http(s)` apply link was
+returned; a non-`http(s)` apply link (for example `javascript:`) is dropped.
 
 All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and
-the process exits with code `1`. Error codes: `MISSING_TOKEN`, `AUTH`, `QUOTA`,
-`RUN_TIMEOUT`, `RUN_FAILED`, `PAGE_TOO_DEEP`, `BAD_ID`, `NOT_FOUND`, `BAD_ARG`,
-`UNKNOWN_FLAG`, `HTTP_ERROR`.
+the process exits with code `1`. Error codes:
+
+| Code | When |
+|------|------|
+| `MISSING_TOKEN` | `APIFY_API_TOKEN` is unset or blank; no request is sent. |
+| `AUTH` | The API rejected the token (HTTP 401/403). |
+| `QUOTA` | The Apify account has no remaining quota (HTTP 402). |
+| `HTTP_ERROR` | Any other failed request, a network/timeout failure, a body over 20 MB, or an unparseable response. |
+| `RUN_TIMEOUT` | The Actor run did not reach a terminal state in time. |
+| `RUN_FAILED` | The run ended in a terminal state other than `SUCCEEDED`. |
+| `PAGE_TOO_DEEP` | `page × limit` exceeds the 200-result window. |
+| `NOT_FOUND` | `detail` found no record: the dataset expired (HTTP 404) or the page is empty. |
+| `BAD_ID` | The `detail` id is not `<dataset_id>:<offset>`. |
+| `NO_QUERY` | `search` was called without a non-empty `--query`. |
+| `NO_ID` | `detail` was called without an id. |
+| `BAD_ARG` | A flag value is invalid, a flag takes no value it was given, or an extra positional argument was passed. |
+| `UNKNOWN_FLAG` | A flag the command does not accept. |
+| `BAD_CMD` | The command is not `search` or `detail`. |
+| `SEARCH_FAILED` | A `search` failure with no more specific code. |
+| `DETAIL_FAILED` | A `detail` failure with no more specific code. |
+| `INTERNAL_ERROR` | An unexpected error escaped the CLI (a bug). |
 
 ## Notes
 

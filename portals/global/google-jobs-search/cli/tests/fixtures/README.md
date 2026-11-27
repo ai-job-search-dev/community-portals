@@ -1,7 +1,8 @@
 # Apify Actor fixtures
 
-Two verbatim Apify API responses, served over loopback by the CLI tests so the
-real request building and response reading run with no network.
+Two captured Apify API responses (not fully verbatim: each record's
+`description` is truncated to 600 characters), served over loopback by the CLI
+tests so the real request building and response reading run with no network.
 
 - `run-succeeded.json` — the response to the Actor-run start request, a run that
   finished with `SUCCEEDED`. Data: run `Ve1rROaIe3i1NgRWS`, dataset `jPV8SE3dHqcuO2M3C`.

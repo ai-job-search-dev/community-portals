@@ -33,6 +33,8 @@ describe("flag validation", () => {
     { args: ["search", "-q", "x", "--limit", "abc"], code: "BAD_ARG" },
     { args: ["search", "-q", "x", "--bogus", "1"], code: "UNKNOWN_FLAG" },
     { args: ["search", "-q", "x", "--remote", "yes"], code: "BAD_ARG" },
+    { args: ["search", "-q", "engineer", "typo"], code: "BAD_ARG" },
+    { args: ["detail", "a:1", "typo"], code: "BAD_ARG" },
     { args: ["detail"], code: "NO_ID" },
     { args: ["detail", "a:1", "--format", "table"], code: "BAD_ARG" },
     { args: ["unknown-cmd"], code: "BAD_CMD" },
@@ -45,7 +47,11 @@ describe("flag validation", () => {
       const result = await runCLI(args, { APIFY_API_TOKEN: TEST_TOKEN, GOOGLE_JOBS_SEARCH_API_URL: server.origin })
       expect(result.exitCode).toBe(1)
       expect(result.stdout).toBe("")
-      expect(parsedStderr(result.stderr).code).toBe(code)
+      const parsed = parsedStderr(result.stderr)
+      expect(parsed.code).toBe(code)
+      // A code with no human-readable message is not a complete contract error.
+      expect(typeof parsed.error).toBe("string")
+      expect(parsed.error!.length).toBeGreaterThan(0)
       expect(server.requests).toHaveLength(0)
     })
   }
