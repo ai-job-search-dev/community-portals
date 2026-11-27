@@ -33,6 +33,8 @@ const missingValueCases: string[][] = [
   // empty string and the handler dropped the filter, so the search ran unfiltered.
   ["search", "--query", "python", "--sort="],
   ["search", "--query", "python", "--sort", ""],
+  ["search", "--query", "python", "--sort", "  "],
+  ["search", "--query", "python", "--sort=  "],
   ["search", "-q="],
 ];
 for (const args of missingValueCases) {
