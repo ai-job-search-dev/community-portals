@@ -1,0 +1,145 @@
+export const BASE_URL = "https://data.usajobs.gov"
+
+export function writeError(error: string, code: string): void {
+  process.stderr.write(JSON.stringify({ error, code }) + "\n")
+}
+
+export interface Credentials {
+  /** The API key USAJOBS emails you after registration; sent as Authorization-Key. */
+  key: string
+  /** The email you registered with; sent as User-Agent. */
+  email: string
+}
+
+/**
+ * Read USAJOBS_API_KEY and USAJOBS_EMAIL from the environment.
+ * USAJOBS requires both: https://developer.usajobs.gov/guides/authentication
+ */
+export function credentials(): Credentials {
+  const key = process.env.USAJOBS_API_KEY?.trim() ?? ""
+  const email = process.env.USAJOBS_EMAIL?.trim() ?? ""
+  const missing = [!key && "USAJOBS_API_KEY", !email && "USAJOBS_EMAIL"].filter(Boolean)
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.join(" and ")} ${missing.length > 1 ? "are" : "is"} not set. Request a free API key at developer.usajobs.gov/apirequest/, then export USAJOBS_API_KEY=<key from the USAJOBS email> and USAJOBS_EMAIL=<the email you registered with>.`,
+    )
+  }
+  return { key, email }
+}
+
+/** Extract YYYY-MM-DD from an ISO 8601 timestamp or date string, or null. */
+export function isoDate(value: string | null | undefined): string | null {
+  if (!value) return null
+  const m = value.match(/^(\d{4}-\d{2}-\d{2})/)
+  return m ? m[1] : null
+}
+
+const RATE_SUFFIX: Record<string, string> = {
+  PA: "/yr",
+  PH: "/hr",
+  BW: "/biweekly",
+  PW: "/wk",
+  PM: "/mo",
+  SES: " (SES range)",
+  WC: "/hr (WG)",
+}
+
+/** Format a USAJobs PositionRemuneration array into a human-readable salary string. */
+export function formatSalary(
+  remuneration: Array<{ MinimumRange?: string; MaximumRange?: string; RateIntervalCode?: string }> | undefined,
+): string | null {
+  const r = remuneration?.[0]
+  if (!r) return null
+  const min = r.MinimumRange ? Math.round(Number(r.MinimumRange)) : null
+  const max = r.MaximumRange ? Math.round(Number(r.MaximumRange)) : null
+  if (!min && !max) return null
+  const fmt = (n: number) => "$" + n.toLocaleString("en-US")
+  const range = min && max && min !== max ? `${fmt(min)} – ${fmt(max)}` : min ? fmt(min) : fmt(max!)
+  const suffix = r.RateIntervalCode ? (RATE_SUFFIX[r.RateIntervalCode] ?? "") : ""
+  return range + suffix
+}
+
+const INVISIBLE_CHARS =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u00ad\u0600-\u0605\u061c\u06dd\u070f\u08e2\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff\ufff9-\ufffb]/g
+
+export function stripInvisible<T>(value: T): T {
+  if (typeof value === "string") return value.replace(INVISIBLE_CHARS, "") as T
+  if (Array.isArray(value)) return value.map(stripInvisible) as T
+  if (value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripInvisible(v)])) as T
+  }
+  return value
+}
+
+export interface JobDescriptor {
+  PositionID: string
+  PositionTitle: string
+  PositionURI: string
+  ApplyURI?: string[]
+  PositionLocationDisplay?: string
+  PositionLocation?: Array<{ LocationName: string }>
+  OrganizationName?: string
+  DepartmentName?: string
+  PositionSchedule?: Array<{ Name: string; Code: string }>
+  PositionOfferingType?: Array<{ Name: string; Code: string }>
+  PositionRemuneration?: Array<{
+    MinimumRange?: string
+    MaximumRange?: string
+    RateIntervalCode?: string
+    Description?: string
+  }>
+  PublicationStartDate?: string
+  ApplicationCloseDate?: string
+  UserArea?: {
+    Details?: {
+      JobSummary?: string
+      RemoteIndicator?: boolean
+      WhoMayApply?: { Name?: string; Code?: string }
+    }
+  }
+}
+
+export interface ApiSearchResponse {
+  SearchResult: {
+    SearchResultCount: number
+    SearchResultCountAll: number
+    SearchResultItems: Array<{
+      MatchedObjectId: string
+      MatchedObjectDescriptor: JobDescriptor
+    }>
+  }
+}
+
+export async function apiFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+  const { key, email } = credentials()
+  const url = new URL(`${BASE_URL}${path}`)
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== "") url.searchParams.set(k, v)
+  }
+
+  const maxRetries = 5
+  let delay = 500
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url.toString(), {
+      headers: {
+        "Authorization-Key": key,
+        "User-Agent": email,
+        Host: "data.usajobs.gov",
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(15000),
+    })
+
+    if (response.status === 429 || response.status >= 500) {
+      if (attempt === maxRetries) throw new Error(`Request failed: ${response.status} ${response.statusText}`)
+      const jitter = Math.floor(Math.random() * 500)
+      await new Promise((r) => setTimeout(r, delay + jitter))
+      delay = Math.min(delay * 2, 5000)
+      continue
+    }
+
+    if (!response.ok) throw new Error(`Request failed: ${response.status} ${response.statusText}`)
+    return response.json() as Promise<T>
+  }
+  throw new Error("Request failed after max retries")
+}
