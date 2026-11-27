@@ -18,7 +18,7 @@ export async function runCLI(args: string[], preload = NO_NETWORK): Promise<CLIR
     {
       stdout: "pipe",
       stderr: "pipe",
-      env: { ...process.env, USAJOBS_API_KEY: "test@example.com" },
+      env: { ...process.env, USAJOBS_API_KEY: "test-api-key", USAJOBS_EMAIL: "test@example.com" },
     },
   )
 

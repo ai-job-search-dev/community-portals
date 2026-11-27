@@ -75,24 +75,31 @@ describe("USAJobs CLI flag validation", () => {
       expect(parsedStderr(result.stderr).code).toBe("NO_ID")
     })
 
-    test("missing API key causes API_ERROR with helpful message", async () => {
-      const proc = Bun.spawn(
-        ["bun", "run", "--preload", import.meta.dir + "/no-network.ts", import.meta.dir + "/../src/cli.ts", "search"],
-        {
-          stdout: "pipe",
-          stderr: "pipe",
-          env: { ...process.env, USAJOBS_API_KEY: "" },
-        },
-      )
-      const [stderr, exitCode] = await Promise.all([
-        new Response(proc.stderr).text(),
-        proc.exited,
-      ])
-      expect(exitCode).toBe(1)
-      const err = parsedStderr(stderr.trim())
-      expect(err.code).toBe("API_ERROR")
-      expect(err.error).toContain("USAJOBS_API_KEY")
-    })
+    const missingCredentials: Array<[string, Record<string, string>, string[]]> = [
+      ["API key", { USAJOBS_API_KEY: "", USAJOBS_EMAIL: "test@example.com" }, ["USAJOBS_API_KEY"]],
+      ["email", { USAJOBS_API_KEY: "test-api-key", USAJOBS_EMAIL: "" }, ["USAJOBS_EMAIL"]],
+      ["API key and email", { USAJOBS_API_KEY: "", USAJOBS_EMAIL: "  " }, ["USAJOBS_API_KEY", "USAJOBS_EMAIL"]],
+    ]
+    for (const [label, creds, named] of missingCredentials) {
+      test(`missing ${label} causes API_ERROR naming ${named.join(" and ")}`, async () => {
+        const proc = Bun.spawn(
+          ["bun", "run", "--preload", import.meta.dir + "/no-network.ts", import.meta.dir + "/../src/cli.ts", "search"],
+          {
+            stdout: "pipe",
+            stderr: "pipe",
+            env: { ...process.env, ...creds },
+          },
+        )
+        const [stderr, exitCode] = await Promise.all([
+          new Response(proc.stderr).text(),
+          proc.exited,
+        ])
+        expect(exitCode).toBe(1)
+        const err = parsedStderr(stderr.trim())
+        expect(err.code).toBe("API_ERROR")
+        for (const name of named) expect(err.error).toContain(name)
+      })
+    }
   })
 
   describe("empty --keyword rejection", () => {

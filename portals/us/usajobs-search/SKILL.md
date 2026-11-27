@@ -10,7 +10,7 @@ description: >
   Trigger phrases: federal job, government job, agency hiring, USA jobs,
   civil service, federal position, work for the government.
 context: fork
-enabled: false  # set to true after adding USAJOBS_API_KEY to your environment
+enabled: false  # set to true after adding USAJOBS_API_KEY and USAJOBS_EMAIL to your environment
 allowed-tools: Bash(bun run .agents/skills/usajobs-search/cli/src/cli.ts *)
 ---
 
@@ -26,10 +26,13 @@ branch agencies** and many legislative/judicial branch roles.
 
 ## Setup (one-time)
 
-1. Register at **developer.usajobs.gov** — provide your name and email address.
-2. Your registration email **is** your API key. Set it as an environment variable:
+1. Request a key at **[developer.usajobs.gov/apirequest](https://developer.usajobs.gov/apirequest/)** — provide your name and email address. USAJOBS emails you an API key.
+2. Set both values as environment variables. USAJOBS requires the key as the
+   `Authorization-Key` header and your registration email as the `User-Agent` header
+   ([authentication guide](https://developer.usajobs.gov/guides/authentication)):
    ```bash
-   export USAJOBS_API_KEY="the-email-you-registered-with@example.com"
+   export USAJOBS_API_KEY="the-key-from-the-usajobs-email"
+   export USAJOBS_EMAIL="the-email-you-registered-with@example.com"
    ```
 3. Set `enabled: true` in this SKILL.md (or use `/setup` if your skill has that flow).
 

@@ -36,8 +36,9 @@ function parseFlags(argv: string[]): Flags {
 const HELP = `usajobs-cli — search US federal government jobs via the USAJOBS API
 
 SETUP
-  Register at developer.usajobs.gov and set your registration email as the key:
-  export USAJOBS_API_KEY="the-email-you-registered-with@example.com"
+  Request a key at developer.usajobs.gov/apirequest/. USAJOBS emails it to you.
+  export USAJOBS_API_KEY="the-key-from-the-usajobs-email"
+  export USAJOBS_EMAIL="the-email-you-registered-with@example.com"
 
 USAGE
   bun run src/cli.ts search [flags]
@@ -60,7 +61,7 @@ EXAMPLES
   bun run src/cli.ts detail USGS-DEF-CA-26-00001 --format plain
   bun run src/cli.ts detail https://www.usajobs.gov/job/789456123/ --format plain
 
-Requires USAJOBS_API_KEY env var. Register free at developer.usajobs.gov.
+Requires USAJOBS_API_KEY and USAJOBS_EMAIL env vars. Register free at developer.usajobs.gov.
 `
 
 const KNOWN_FLAGS: Record<string, Set<string>> = {
