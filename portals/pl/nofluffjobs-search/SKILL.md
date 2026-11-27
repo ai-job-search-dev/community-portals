@@ -14,7 +14,7 @@ description: >
   godzinowa, widełki płacowe, oferty pracy Warszawa, praca dla programisty
   PHP/Pythona, ogłoszenia o pracę.
 context: fork
-enabled: true  # set to false to keep this portal installed but have /scrape skip it
+enabled: false  # off by default: No Fluff Jobs Regulamin § 2 ust. 9 bans systematic downloading of its listings; set to true only after reading it
 allowed-tools: Bash(bun run .agents/skills/nofluffjobs-search/cli/src/cli.ts *)
 ---
 
@@ -34,6 +34,16 @@ is a parsed field instead of something to infer from a description.
 This reads No Fluff Jobs' public, robots-permitted listing pages. **Keep volume
 low, and don't use it commercially or for bulk data collection.** Run it on your
 own responsibility.
+
+**Terms of service — disabled by default.** This portal ships with `enabled: false`.
+The No Fluff Jobs [Regulamin](https://nofluffjobs.com/static/No_Fluff_Jobs_Terms_and_Conditions.pdf)
+(version of 17.11.2026, linked as "Regulamin" in the site footer) forbids it in § 2:
+ust. 9 says "Zakazane jest powtarzające się lub systematyczne pobieranie" of the
+Service's data that makes up its database, "w szczególności poszczególnych ogłoszeń o
+pracę" (individual job postings), and ust. 8 bans downloading or re-using a
+substantial part of that database. The Regulamin has no explicit clause on bots or
+crawlers; these two are the closest. Read the terms, and set `enabled: true` only if
+you accept responsibility for using it. Even then, keep to personal, low-volume use.
 
 `robots.txt` disallows **`/api/`** and **`/posting/`**, so this CLI never calls
 the portal's JSON API. It reads the server-rendered `/pl` (search) and
