@@ -126,8 +126,18 @@ describe("parseDetailPage - jobtext-jobad layout (live 2026-11-08)", () => {
     }
   });
 
+  test("keeps the description after a nested section in the body", () => {
+    const page = JOBTEXT_PAGE.replace(
+      "<p>Hos os får du</p>",
+      "<section><p>Om GASA GROUP</p></section>\n<p>Hos os får du</p>",
+    );
+    const d = parseDetailPage(page, URL, "h1704469");
+    expect(d.description).toContain("Om GASA GROUP");
+    expect(d.description).toEndWith("procesforbedringer og automatisering");
+  });
+
   test("falls back to the header company when there is no company card", () => {
-    const d = parseDetailPage(JOBTEXT_PAGE_NO_CARD, URL, "r14076266");
+    const d = parseDetailPage(JOBTEXT_PAGE_NO_CARD, URL, "h1704469");
     expect(d.company).toBe("TS STILLADSMONTAGE A/S");
     expect(d.employmentType).toBe("Fastansættelse");
     expect(d.deadline).toBeNull();

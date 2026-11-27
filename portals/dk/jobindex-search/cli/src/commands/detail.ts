@@ -212,15 +212,16 @@ export function parseDetailPage(html: string, url: string, id: string): DetailRe
   // Company: only the native shape carries one - as the <title> prefix,
   // "VELLIV - Udvikler til Camunda/AWS". Require the suffix to be the job
   // title so an unrelated <title> never becomes a company name.
+  const visible = visibleHtml(html)
   let company: string | null = null
   if (isJobtext) {
     // The sidebar company card names the employer itself; the header item can
     // read "Jobindex søger for <employer>" on recruitment ads, so it is the
     // fallback for ads without a card.
-    const card = visibleHtml(html).match(/class="vp-card__name"[^>]*>([\s\S]*?)<\/a>/i)
+    const card = visible.match(/class="vp-card__name"[^>]*>([\s\S]*?)<\/a>/i)
     company =
       fragmentText(card?.[1]) ??
-      (jobtextMeta(visibleHtml(html), "Virksomhed")?.replace(/^Jobindex\s+søger\s+for\s+/i, "") || null)
+      (jobtextMeta(visible, "Virksomhed")?.replace(/^Jobindex\s+søger\s+for\s+/i, "") || null)
   } else if (isNative) {
     const titleTag = html.match(/<title>([\s\S]*?)<\/title>/i)
     const pageTitle = titleTag ? decodeHtmlEntities(titleTag[1]).replace(/\s+/g, " ").trim() : ""
@@ -236,21 +237,20 @@ export function parseDetailPage(html: string, url: string, id: string): DetailRe
   let description: string | null = null
 
   if (isJobtext) {
-    const visible = visibleHtml(html)
     location = jobtextMeta(visible, "Lokation")
     employmentType = fragmentText(jobtextFact(visible, ["Ansættelsestype", "Ansættelsesform"]))
     hours = fragmentText(jobtextFact(visible, ["Ugentlig arbejdstid"]))
     // "Snarest muligt" (as soon as possible) carries no date and stays null.
     const due = jobtextFact(visible, ["Ansøgningsfrist"])
     deadline = toIsoDate(due?.match(/<time[^>]+datetime="([^"]+)"/)?.[1] ?? fragmentText(due))
-    const body = visible.match(/<section class="jobtext-jobad__body"[^>]*>([\s\S]*?)<\/section>/i)
-    description = body ? bodyText(body[1]) : null
+    const body = extractDivContent(visible, "jobtext-jobad__body", "section")
+    description = body ? bodyText(body) : null
   } else if (isNative) {
     location = jdBlockValue(html, "jd-location")
     deadline = toIsoDate(jdBlockValue(html, "jd-deadline"))
     employmentType = jdBlockValue(html, "jd-type")
     hours = jdBlockValue(html, "jd-workhours")
-    const desc = extractDivContent(visibleHtml(html), "jd-description")
+    const desc = extractDivContent(visible, "jd-description")
     description = desc
       ? decodeHtmlEntities(stripTags(desc)).replace(/\s+/g, " ").trim() || null
       : null
