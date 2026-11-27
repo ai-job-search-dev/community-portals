@@ -217,13 +217,11 @@ function fromRenderedHtml(root: ReturnType<typeof parse>, slug: string, url: str
   // Selecting only p/li loses those requirements and application instructions,
   // and includes the header's metadata list. Keep the old layout fallback.
   const body = root.querySelector(".job-list-details .job-details-body")
-  const description = body
-    ? descriptionToText(body.innerHTML)
-    : root
-      .querySelectorAll(".job-list-details p, .job-list-details li")
-      .map((node) => cleanText(node.text))
-      .filter(Boolean)
-      .join("\n")
+  const description = (body ? descriptionToText(body.innerHTML) : "") || root
+    .querySelectorAll(".job-list-details p, .job-list-details li")
+    .map((node) => cleanText(node.text))
+    .filter(Boolean)
+    .join("\n")
 
   const employmentType = overviewValue(root, "Jobtype")
 

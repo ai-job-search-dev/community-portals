@@ -17,35 +17,47 @@ const PAGE = `<!doctype html><html><head>
 <strong>Application</strong><br>Send a CV and application.</div>
 </div></body></html>`
 
+async function detail(page: string, format: string) {
+  const dir = await mkdtemp(join(tmpdir(), "jobdanmark-body-"))
+  try {
+    const fixture = join(dir, "page.html")
+    const preload = join(dir, "replay.ts")
+    await writeFile(fixture, page)
+    // No live requests: only the expected detail URL can read the fixture.
+    await writeFile(preload, `globalThis.fetch = async (input) => {
+      if (String(input) !== "https://jobdanmark.dk/job/architect") throw new Error("Unexpected URL");
+      return new Response(await Bun.file(${JSON.stringify(fixture)}).text());
+    };`)
+    const proc = Bun.spawn([process.execPath, "run", "--preload", preload,
+      join(import.meta.dir, "../src/cli.ts"), "detail", "architect", "--format", format],
+      { stdout: "pipe", stderr: "pipe" })
+    const [stdout, stderr, exit] = await Promise.all([
+      new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited,
+    ])
+    expect(exit).toBe(0)
+    expect(stderr).toBe("")
+    return format === "json" ? JSON.parse(stdout).description : stdout.split("description: ")[1]
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
 for (const format of ["json", "plain"]) {
   test(`detail ${format} keeps the whole rendered job body`, async () => {
-    const dir = await mkdtemp(join(tmpdir(), "jobdanmark-body-"))
-    try {
-      const fixture = join(dir, "page.html")
-      const preload = join(dir, "replay.ts")
-      await writeFile(fixture, PAGE)
-      // No live requests: only the expected detail URL can read the fixture.
-      await writeFile(preload, `globalThis.fetch = async (input) => {
-        if (String(input) !== "https://jobdanmark.dk/job/architect") throw new Error("Unexpected URL");
-        return new Response(await Bun.file(${JSON.stringify(fixture)}).text());
-      };`)
-      const proc = Bun.spawn([process.execPath, "run", "--preload", preload,
-        join(import.meta.dir, "../src/cli.ts"), "detail", "architect", "--format", format],
-        { stdout: "pipe", stderr: "pipe" })
-      const [stdout, stderr, exit] = await Promise.all([
-        new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited,
-      ])
-      expect(exit).toBe(0)
-      expect(stderr).toBe("")
-      const description = format === "json" ? JSON.parse(stdout).description : stdout.split("description: ")[1]
-      expect(description.trim()).toBe([
-        "Introductory requirements.", "Responsibilities", "Build reliable systems.",
-        "Conditions", "Work 37 hours weekly.", "Application", "Send a CV and application.",
-      ].join("\n"))
-      expect(description).not.toContain("Header company")
-      expect(description).not.toContain("Header address")
-    } finally {
-      await rm(dir, { recursive: true, force: true })
-    }
+    const description = await detail(PAGE, format)
+    expect(description.trim()).toBe([
+      "Introductory requirements.", "Responsibilities", "Build reliable systems.",
+      "Conditions", "Work 37 hours weekly.", "Application", "Send a CV and application.",
+    ].join("\n"))
+    expect(description).not.toContain("Header company")
+    expect(description).not.toContain("Header address")
   })
 }
+
+test("detail falls back to p/li text when the body container is empty", async () => {
+  const page = PAGE.replace(/<div class="job-details-body">[\s\S]*?<\/div>\n<\/div>/,
+    '<div class="job-details-body">  <br> </div>\n<p>Old layout prose.</p></div>')
+  expect(page).toContain("Old layout prose.")
+  const description = await detail(page, "json")
+  expect(description).toContain("Old layout prose.")
+})
