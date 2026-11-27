@@ -27,7 +27,7 @@ bun install
 | `suggestions` | Typeahead suggestions for job title / keyword search |
 
 All commands accept `--format json|table|plain` (default: `json`).
-Errors are written to **stderr** as JSON and the process exits with code `1`. API, argument and missing-required errors use `{ "error": "...", "code": "..." }`; invalid flag values are rejected by Bunli as `{ "ok": false, "error": { "kind": "validation", "message": "...", ... } }`.
+Errors are written to **stderr** as JSON and the process exits with code `1`. API, argument, missing-required and out-of-enum errors (`--format csv`) use `{ "error": "...", "code": "..." }`; other invalid flag values are rejected by Bunli as `{ "ok": false, "error": { "kind": "validation", "message": "...", ... } }`.
 
 ---
 
@@ -354,9 +354,10 @@ All errors are written to **stderr** in JSON format and exit with code `1`:
 { "error": "API request failed: 500 Internal Server Error", "code": "API_ERROR" }
 { "error": "--query is required", "code": "MISSING_REQUIRED" }
 { "error": "--search-string is required", "code": "MISSING_REQUIRED" }
+{ "error": "option --format must be one of json|table|plain, got \"csv\"", "code": "BAD_ARG" }
 ```
 
-Invalid flag values (for example `--per-page 0`) fail Bunli's schema validation before the command runs, in Bunli's own shape:
+Other invalid flag values (for example `--per-page 0`) fail Bunli's schema validation before the command runs, in Bunli's own shape:
 
 ```json
 { "ok": false, "error": { "kind": "validation", "name": "BunliValidationError", "tag": "BunliValidationError", "message": "Invalid option 'per-page': Too small: expected number to be >=1", "command": "occupations", "option": "per-page", "expectedType": "default" } }
