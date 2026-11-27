@@ -1,0 +1,20 @@
+{
+  "name": "gracklehq-cli",
+  "version": "1.0.0",
+  "description": "CLI for searching games-industry jobs aggregated by Grackle HQ from studio careers pages - no authentication, zero runtime dependencies.",
+  "type": "module",
+  "main": "src/cli.ts",
+  "bin": {
+    "gracklehq-search": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "test": "bun test --timeout 30000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/bun": "1.4.4"
+  }
+}
