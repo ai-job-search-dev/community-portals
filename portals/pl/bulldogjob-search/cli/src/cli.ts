@@ -202,11 +202,16 @@ async function main(): Promise<number> {
   return fail(`Unknown command "${cmd}"`, "BAD_CMD")
 }
 
+// Set exitCode rather than calling process.exit(): exit() can end the process
+// before a large stdout write has drained into a pipe, truncating the JSON at
+// 64 KB (seen with `search --all | ...`).
 main()
-  .then((code) => process.exit(code))
+  .then((code) => {
+    process.exitCode = code
+  })
   .catch((e) => {
     process.stderr.write(
       JSON.stringify({ error: e instanceof Error ? e.message : String(e), code: "INTERNAL_ERROR" }) + "\n",
     )
-    process.exit(1)
+    process.exitCode = 1
   })

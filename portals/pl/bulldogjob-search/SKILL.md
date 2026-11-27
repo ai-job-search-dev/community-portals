@@ -10,7 +10,7 @@ description: >
   ogłoszenia dla programistów, szukam pracy programisty, oferty pracy PHP, look up this
   Bulldogjob offer.
 context: fork
-enabled: true  # set to false to keep this portal installed but have /scrape skip it
+enabled: false  # off by default: Bulldogjob Regulamin § 16 ust. 3 bars downloading the Service's content; set to true only after reading it
 allowed-tools: Bash(bun run .agents/skills/bulldogjob-search/cli/src/cli.ts *)
 ---
 
@@ -32,12 +32,14 @@ automated access; the closest is § 16 ust. 3:
 
 ("Employers, Users and third parties may not copy, modify, reproduce, distribute or
 download all or part of the Service's content.") That is a copyright clause in a section
-titled *Prawa autorskie Serwisu*. Our reading is that it targets reusing the site's
-content, not a person reading offers one page at a time, which is what this skill does
-for one user. The clause does name users and "pobierania" (downloading), and Bulldogjob
-has not confirmed either reading, so check the current terms yourself. Read offers here,
-don't republish or store them in bulk. **Keep volume low, don't use it
-commercially or for bulk data collection**, and run it on your own responsibility.
+titled *Prawa autorskie Serwisu*, but it names users and "pobierania" (downloading), and a
+CLI that fetches and parses offer pages downloads part of the Service's content.
+Bulldogjob has not confirmed in writing that automated reads are fine.
+
+**So this portal ships with `enabled: false`:** `/scrape` uses WebSearch for Bulldogjob
+unless you enable it. Read the terms, and set `enabled: true` only if you accept
+responsibility for using it. Even then, keep volume low, read offers one page at a time,
+don't republish or store them in bulk, and don't use it commercially.
 
 ## No free-text search - how `--query` works
 
