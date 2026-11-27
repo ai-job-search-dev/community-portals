@@ -14,7 +14,7 @@ description: >
   programista, szukam pracy, praca B2B, stawka godzinowa, oferty pracy Warszawa,
   praca dla programisty PHP/Pythona, ogłoszenia o pracę.
 context: fork
-enabled: true  # set to false to keep this portal installed but have /scrape skip it
+enabled: false  # off by default: justjoin.it Regulamin § 11.3 bans automated data collection; set to true only after reading it
 allowed-tools: Bash(bun run .agents/skills/justjoin-search/cli/src/cli.ts *)
 ---
 
@@ -48,14 +48,14 @@ disallows them:
 The pages this skill does read — `/job-offers/…` and `/job-offer/…` — carry no
 `Disallow` rule.
 
-**Terms of service.** justjoin.it's Regulamin (21.04.2020, the version checked) has
-no clause on bots, crawlers or automated reads. § 23(4) does say third parties may
-not copy, modify, reproduce, distribute or download the Service's content in whole
-or in part, and § 23(3) reserves all rights to the content and page layout. That
-wording is broad enough that sustained or bulk automated collection could breach
-it, so this skill stays at personal, low-volume reads of individual search and
-offer pages, and offers no pagination or bulk mode. Re-check the current Regulamin
-before relying on this.
+**Terms of service — disabled by default.** This portal ships with `enabled: false`
+because justjoin.it's current Regulamin (04.11.2026, linked from
+[justjoin.it/terms-and-privacy-policies](https://justjoin.it/terms-and-privacy-policies))
+prohibits automated access. § 11.3 says: "Zakazane jest w szczególności automatyczne
+pobieranie przez kogokolwiek bez wyraźnej pisemnej zgody Usługodawcy danych zawartych
+w Serwisie." Read the terms, and set `enabled: true` only if you accept responsibility
+for using it. Even then, keep to personal, low-volume reads of individual search and
+offer pages; the skill offers no pagination or bulk mode.
 
 ## When to use this skill
 
