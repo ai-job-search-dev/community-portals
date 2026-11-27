@@ -56,7 +56,7 @@ Key flags:
 - `--zip <code>` — zip code, e.g. `5000`, `8000`, `2100`
 - `--region <name>` — landsdel (`locations` category `region`), e.g. `Sjælland`, `Østjylland`, `Fyn`
 - `--administrative-region <name>` — one of the five regions (`locations` category `administrativeRegion`), e.g. `Region Midtjylland`
-- `--job-type <types>` — comma-separated filters still listed by the settings API: `fuldtid`, `deltid`, `fleksjob`, `elev`, `studiejob`, `praktik`. No live ad carries `fleksjob`, `elev`, `studiejob`, or `praktik`; use `--text` for those (e.g. `--text elevplads`).
+- `--job-type <types>` — comma-separated filters still listed by the settings API: `fuldtid`, `deltid`, `fleksjob`, `elev`, `studiejob`, `praktik`. No live ad carries `fleksjob`, `elev`, `studiejob`, or `praktik`; use `--text` for those (e.g. `--text elevplads`). Unknown values are rejected with `BAD_ARG` (exit 1) before any request.
 - `--page <n>` — page number (30 items per page, server-enforced)
 - `--limit <n>` — cap total results returned by CLI
 - `--format json|table|plain`
