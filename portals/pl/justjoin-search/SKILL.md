@@ -14,7 +14,7 @@ description: >
   programista, szukam pracy, praca B2B, stawka godzinowa, oferty pracy Warszawa,
   praca dla programisty PHP/Pythona, ogłoszenia o pracę.
 context: fork
-enabled: false  # off by default: justjoin.it Regulamin § 11.3 bans automated data collection; set to true only after reading it
+enabled: false  # off by default: justjoin.it Regulamin § 11.3 bans automated data collection without the provider's explicit written consent; set to true only if you have that consent
 allowed-tools: Bash(bun run .agents/skills/justjoin-search/cli/src/cli.ts *)
 ---
 
@@ -53,9 +53,10 @@ because justjoin.it's current Regulamin (04.11.2026, linked from
 [justjoin.it/terms-and-privacy-policies](https://justjoin.it/terms-and-privacy-policies))
 prohibits automated access. § 11.3 says: "Zakazane jest w szczególności automatyczne
 pobieranie przez kogokolwiek bez wyraźnej pisemnej zgody Usługodawcy danych zawartych
-w Serwisie." Read the terms, and set `enabled: true` only if you accept responsibility
-for using it. Even then, keep to personal, low-volume reads of individual search and
-offer pages; the skill offers no pagination or bulk mode.
+w Serwisie." The ban lifts only with the provider's explicit written consent, so set
+`enabled: true` only if you hold that consent from justjoin.it. Even then, keep to
+personal, low-volume reads of individual search and offer pages; the skill offers no
+pagination or bulk mode.
 
 ## When to use this skill
 
