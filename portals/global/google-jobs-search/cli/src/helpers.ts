@@ -94,6 +94,17 @@ async function readBodyBounded(response: Response, limit: number, truncate: bool
 }
 
 /**
+ * Wait out one retry: the current delay plus 0-499ms jitter, then return the
+ * next delay, doubled up to 8s. Both retry paths (a fetch failure and a body
+ * read failure) use it, so the schedule stays in one place.
+ */
+async function waitBeforeRetry(delay: number): Promise<number> {
+  const jitter = Math.floor(Math.random() * 500)
+  await new Promise((r) => setTimeout(r, delay + jitter))
+  return Math.min(delay * 2, 8000)
+}
+
+/**
  * A request to the Apify API. Retries 429/5xx with exponential backoff (the
  * portal contract's schedule: 500ms doubling to 8s, six retries); a GET retries
  * on both, a POST only on 429, because a POST that failed with 5xx may already
@@ -140,9 +151,7 @@ export async function apiRequest(
           "HTTP_ERROR",
         )
       }
-      const jitter = Math.floor(Math.random() * 500)
-      await new Promise((r) => setTimeout(r, delay + jitter))
-      delay = Math.min(delay * 2, 8000)
+      delay = await waitBeforeRetry(delay)
       continue
     }
 
@@ -158,9 +167,7 @@ export async function apiRequest(
           response.status,
         )
       }
-      const jitter = Math.floor(Math.random() * 500)
-      await new Promise((r) => setTimeout(r, delay + jitter))
-      delay = Math.min(delay * 2, 8000)
+      delay = await waitBeforeRetry(delay)
       continue
     }
 
@@ -176,14 +183,44 @@ export async function apiRequest(
     }
 
     if (!response.ok) {
-      const body = await readBodyBounded(response, MAX_ERROR_BODY_CHARS, true)
+      // A failed read must not hide the status: fall back to an empty body and
+      // report the status as usual.
+      let body = ""
+      try {
+        body = await readBodyBounded(response, MAX_ERROR_BODY_CHARS, true)
+      } catch {
+        body = ""
+      }
       throw new ApiError(
         `Apify API request failed: ${response.status} ${response.statusText}: ${body}`,
         "HTTP_ERROR",
         response.status,
       )
     }
-    return await readBodyBounded(response, MAX_BODY_CHARS, false)
+
+    // The body arrives after the status, so a stream that breaks mid-body is a
+    // network failure in its own right. An ApiError from the reader (the size
+    // cap) is surfaced as-is. Any other failure follows the same rule as a
+    // fetch failure: a GET is retried, a POST is not, because the run may
+    // already have started.
+    try {
+      return await readBodyBounded(response, MAX_BODY_CHARS, false)
+    } catch (e) {
+      if (e instanceof ApiError) throw e
+      const name = e instanceof Error ? e.name : "Error"
+      const detail = e instanceof Error ? e.message : String(e)
+      if (method !== "GET") {
+        throw new ApiError(`Apify API request failed while reading the response (${name}): ${detail}`, "HTTP_ERROR")
+      }
+      if (attempt === maxRetries) {
+        throw new ApiError(
+          `Apify API request failed after ${maxRetries + 1} attempts (${name}): ${detail}`,
+          "HTTP_ERROR",
+        )
+      }
+      delay = await waitBeforeRetry(delay)
+      continue
+    }
   }
   throw new ApiError("Apify API request failed after max retries", "HTTP_ERROR")
 }

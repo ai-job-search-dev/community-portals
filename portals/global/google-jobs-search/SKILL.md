@@ -157,9 +157,9 @@ the process exits with code `1`. Error codes:
 | `MISSING_TOKEN` | `APIFY_API_TOKEN` is unset or blank; no request is sent. |
 | `AUTH` | The API rejected the token (HTTP 401/403). |
 | `QUOTA` | The Apify account has no remaining quota (HTTP 402). |
-| `HTTP_ERROR` | Any other failed request, a network/timeout failure, a body over 20 MB, or an unparseable response. |
+| `HTTP_ERROR` | Any other failed request, a network/timeout failure, a response body over 20,000,000 decoded characters, or an unparseable response. |
 | `RUN_TIMEOUT` | The Actor run did not reach a terminal state in time. |
-| `RUN_FAILED` | The run ended in a terminal state other than `SUCCEEDED`. |
+| `RUN_FAILED` | The run ended in a terminal state other than `SUCCEEDED`, or it is `SUCCEEDED` but returned no dataset id. |
 | `PAGE_TOO_DEEP` | `page × limit` exceeds the 200-result window. |
 | `NOT_FOUND` | `detail` found no record: the dataset expired (HTTP 404) or the page is empty. |
 | `BAD_ID` | The `detail` id is not `<dataset_id>:<offset>`. |

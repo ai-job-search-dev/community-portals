@@ -43,6 +43,27 @@ function stubFetch(responses: Array<() => Response>): { calls: number } {
   return state
 }
 
+/**
+ * A response whose body errors part-way through, after emitting `prefix`. The
+ * stream's `pull` enqueues the prefix once, then errors on the next read, so the
+ * failure happens while the body is being read, not while the fetch resolves.
+ */
+function brokenBodyResponse(prefix = ""): Response {
+  const encoder = new TextEncoder()
+  let sent = false
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!sent) {
+        sent = true
+        if (prefix) controller.enqueue(encoder.encode(prefix))
+        return
+      }
+      controller.error(new TypeError("The stream was interrupted"))
+    },
+  })
+  return new Response(stream, { status: 200 })
+}
+
 async function codeOf(promise: Promise<unknown>): Promise<string> {
   try {
     await promise
@@ -118,6 +139,63 @@ describe("apiRequest retry/backoff", () => {
       message = (e as ApiError).message
     }
     expect(message).toContain("TimeoutError")
+  })
+
+  test("retries a GET whose body stream breaks, and returns the next attempt's body", async () => {
+    instantTimers()
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      return calls === 1 ? brokenBodyResponse("partial") : new Response("{}", { status: 200 })
+    }) as unknown as typeof fetch
+    expect(await apiRequest("/x", { token: "t" })).toBe("{}")
+    expect(calls).toBe(2)
+  })
+
+  test("does not retry a POST whose body stream breaks: the run may have started", async () => {
+    instantTimers()
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      return brokenBodyResponse()
+    }) as unknown as typeof fetch
+    expect(await codeOf(apiRequest("/acts/x/runs", { method: "POST", body: "{}", token: "t" }))).toBe("HTTP_ERROR")
+    expect(calls).toBe(1)
+  })
+
+  test("gives up on a GET whose body stream always breaks, after seven attempts", async () => {
+    instantTimers()
+    const state = stubFetch([() => brokenBodyResponse()])
+    expect(await codeOf(apiRequest("/x", { token: "t" }))).toBe("HTTP_ERROR")
+    expect(state.calls).toBe(7)
+  })
+
+  test("a failed error-body read still reports the status, not the read error", async () => {
+    instantTimers()
+    globalThis.fetch = (async () => {
+      // Status 400, but the body stream errors before any text arrives.
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          controller.enqueue(encoder.encode("partial"))
+          controller.error(new TypeError("The stream was interrupted"))
+        },
+      })
+      return new Response(stream, { status: 400, statusText: "Bad Request" })
+    }) as unknown as typeof fetch
+    let message = ""
+    let status: number | undefined
+    try {
+      await apiRequest("/x", { token: "t" })
+    } catch (e) {
+      expect(e instanceof ApiError).toBe(true)
+      expect((e as ApiError).code).toBe("HTTP_ERROR")
+      status = (e as ApiError).status
+      message = (e as ApiError).message
+    }
+    expect(status).toBe(400)
+    expect(message).toContain("400")
+    expect(message).toContain("Bad Request")
   })
 
   test("does not retry a POST on a network failure: the run may have started", async () => {

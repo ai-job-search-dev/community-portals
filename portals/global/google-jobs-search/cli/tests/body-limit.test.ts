@@ -37,9 +37,9 @@ function streamedResponse(chunk: string, chunks: number, status = 200): { respon
 }
 
 describe("bounded response body", () => {
-  test("a successful body past 20 MB is HTTP_ERROR, not a truncated parse", async () => {
-    // 21 chunks of 1,000,000 characters: past the 20,000,000-character cap.
-    const { response } = streamedResponse("x".repeat(1_000_000), 21)
+  test("a successful body past the character cap is HTTP_ERROR, and reading stops at the cap", async () => {
+    // 25 chunks of 1,000,000 characters: well past the 20,000,000-character cap.
+    const { response, state } = streamedResponse("x".repeat(1_000_000), 25)
     globalThis.fetch = (async () => response) as unknown as typeof fetch
     let err: unknown
     try {
@@ -50,6 +50,10 @@ describe("bounded response body", () => {
     expect(err instanceof ApiError).toBe(true)
     expect((err as ApiError).code).toBe("HTTP_ERROR")
     expect((err as ApiError).message).toContain("exceeded")
+    // The reader stopped instead of draining the body: it cancelled the stream
+    // and read no more than the chunks up to the cap.
+    expect(state.cancelled).toBe(true)
+    expect(state.chunksRead).toBeLessThan(25)
   })
 
   test("a successful body within the cap is returned whole", async () => {
