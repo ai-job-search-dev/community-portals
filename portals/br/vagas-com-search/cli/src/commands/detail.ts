@@ -1,0 +1,60 @@
+import { BASE_URL, htmlFetch, parseJobDetail, stripInvisible, writeError } from "../helpers.js"
+
+export interface DetailOpts {
+  id: string
+  format: "json" | "plain"
+}
+
+/** Accept a raw numeric job ID or a full /vagas/v<id>/<slug> URL. */
+function normalizeId(input: string): string | null {
+  const url = input.match(/\/vagas\/v(\d+)/)
+  if (url) return url[1]
+  const bare = input.match(/^\d+$/)
+  if (bare) return input
+  return null
+}
+
+export async function runDetail(opts: DetailOpts): Promise<number> {
+  const id = normalizeId(opts.id)
+  if (!id) {
+    writeError(`Could not parse a job ID from "${opts.id}"`, "BAD_ID")
+    return 1
+  }
+  try {
+    const html = await htmlFetch(`${BASE_URL}/vagas/v${id}`)
+    if (!html) {
+      writeError("Job not found", "NOT_FOUND")
+      return 1
+    }
+    // A posting that is no longer listed redirects to a search page with no job title.
+    if (!/class="job-shortdescription__title"/i.test(html)) {
+      writeError("Job not found or no longer listed", "NOT_FOUND")
+      return 1
+    }
+    const job = stripInvisible(parseJobDetail(html, id))
+
+    if (opts.format === "plain") {
+      // Optional lines are added only when present, so the blank spacers stay.
+      const extras = [
+        job.contractType ? `Contract: ${job.contractType}` : null,
+        job.salary ? `Salary: ${job.salary}` : null,
+      ].filter((l): l is string => l !== null)
+      const lines = [
+        job.title,
+        `${job.company || "—"} · ${job.location || "—"}`,
+        ...(extras.length ? ["", ...extras] : []),
+        "",
+        job.description || "(no description)",
+        "",
+        `URL: ${job.url}`,
+      ]
+      process.stdout.write(lines.join("\n") + "\n")
+    } else {
+      process.stdout.write(JSON.stringify(job, null, 2) + "\n")
+    }
+    return 0
+  } catch (e) {
+    writeError(e instanceof Error ? e.message : String(e), "DETAIL_FAILED")
+    return 1
+  }
+}
