@@ -397,9 +397,9 @@ export function parseJobCards(html: string): JobCard[] {
   return results
 }
 
-export function extractDivContent(html: string, className: string): string | null {
+export function extractDivContent(html: string, className: string, tag = "div"): string | null {
   const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const openRe = new RegExp(`<div[^>]*class="[^"]*${escaped}[^"]*"[^>]*>`, 'i')
+  const openRe = new RegExp(`<${tag}[^>]*class="[^"]*${escaped}[^"]*"[^>]*>`, 'i')
   const open = openRe.exec(html)
   if (!open) return null
 
@@ -407,21 +407,21 @@ export function extractDivContent(html: string, className: string): string | nul
   let depth = 1
 
   while (depth > 0 && i < html.length) {
-    const nextOpen = html.indexOf('<div', i)
-    const nextClose = html.indexOf('</div>', i)
+    const nextOpen = html.indexOf(`<${tag}`, i)
+    const nextClose = html.indexOf(`</${tag}>`, i)
 
     if (nextClose === -1) return null
 
     if (nextOpen !== -1 && nextOpen < nextClose) {
       depth++
-      i = nextOpen + 4
+      i = nextOpen + tag.length + 1
     } else {
       depth--
-      i = nextClose + 6
+      i = nextClose + tag.length + 3
     }
   }
 
-  return html.slice(open.index + open[0].length, i - 6)
+  return html.slice(open.index + open[0].length, i - tag.length - 3)
 }
 
 export function parseHitCount(html: string): number {
